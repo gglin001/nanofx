@@ -15,9 +15,9 @@
 #undef Py_BUILD_CORE
 #endif
 
-#define PADDLEFX_DEBUG
+#define NANOFX_DEBUG
 
-#ifdef PADDLEFX_DEBUG
+#ifdef NANOFX_DEBUG
 
 #define DEBUG_CHECK(cond) CHECK(cond)
 #define DEBUG_NULL_CHECK(val) NULL_CHECK(val)
