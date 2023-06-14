@@ -1,0 +1,40 @@
+[build-system]
+requires = [
+    "setuptools>=45",
+    "wheel",
+    "setuptools_scm[toml]>=6.2",
+    "ninja==1.11.1",
+    "cmake>=3.25.0",
+    "mypy==1.0.0",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+skip-string-normalization = true
+# default value may too big to run
+workers = 4
+
+# https://pycqa.github.io/isort/docs/configuration/options.html
+[tool.isort]
+profile = "black"
+lines_between_types = 1
+known_first_party = ["nanofx"]
+add_imports = ["from __future__ import annotations"]
+
+# https://beta.ruff.rs/docs/configuration/
+[tool.ruff]
+select = ["UP"]
+ignore = ["UP015"]
+target-version = "py38"
+
+[tool.pytest.ini_options]
+minversion = "7.0.0"
+pythonpath = "tests"
+testpaths = ["tests"]
+filterwarnings = [
+    # Ignore warnings raised by paddlepaddle 2.4
+    "ignore::DeprecationWarning",
+]
+
+[tool.setuptools_scm]
+write_to = "src/nanofx/_version.py"
