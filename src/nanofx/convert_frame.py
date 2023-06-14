@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import dis
-import logging
 import types
 
 from typing import Any, Callable
+
+from .utils import print_bytecode
 
 
 def has_tensor_in_frame(frame: types.FrameType) -> bool:
@@ -24,11 +24,11 @@ def has_tensor_in_frame(frame: types.FrameType) -> bool:
 
 
 def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
-    f_code = frame.f_code
+    code = frame.f_code
 
-    logging.debug(f"\nraw_code:")
-    [logging.debug(x) for x in list(dis.get_instructions(f_code))]
-    logging.debug(f"")
+    print_bytecode(
+        "RAW BYTECODE", code.co_name, code.co_filename, code.co_firstlineno, code
+    )
 
     # debug, no trace
     return None
