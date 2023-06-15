@@ -5,7 +5,7 @@ import types
 
 from typing import Any, Callable
 
-from .utils import print_bytecode
+from .utils import print_bytecode, print_code
 
 
 @dataclasses.dataclass
@@ -48,7 +48,7 @@ def convert_frame(frame: types.FrameType, compiler: Callable) -> Any:
     out_code = compiled_fn.__code__
     # out_code = []
 
-    print_bytecode(code, "RAW BYTECODE")
+    print_code(code, "RAW BYTECODE")
     print_bytecode(
         "NEW BYTECODE", code.co_name, code.co_filename, code.co_firstlineno, out_code
     )
