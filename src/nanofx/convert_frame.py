@@ -42,27 +42,19 @@ def convert_frame(frame: types.FrameType, compiler: Callable) -> Any:
 
     compiled_fn = compiler(code, None)
     compiled_fn = disable(compiled_fn)
+    frame.f_globals['__compiled_fn_0'] = compiled_fn
 
     # TODO: add CALL_FUNCTION to compiled_fn
     out_code = compiled_fn.__code__
+    # out_code = []
 
+    print_bytecode(code, "RAW BYTECODE")
     print_bytecode(
-        "RAW BYTECODE",
-        code.co_name,
-        code.co_filename,
-        code.co_firstlineno,
-        code,
-    )
-    print_bytecode(
-        "NEW BYTECODE",
-        code.co_name,
-        code.co_filename,
-        code.co_firstlineno,
-        out_code,
+        "NEW BYTECODE", code.co_name, code.co_filename, code.co_firstlineno, out_code
     )
 
     # debug, no trace
     return None
 
-    # g = GuardedCode(out_code)
-    # return g
+    g = GuardedCode(out_code)
+    return g

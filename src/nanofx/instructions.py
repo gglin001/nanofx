@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import dis
+import sys
 
 from typing import Any
 
@@ -29,7 +30,38 @@ class Instruction:
         return id(self) == id(other)
 
 
-def create_instruction(name, *, arg=None, argval=None, target=None):
+def convert_instruction(i: dis.Instruction):
+    return Instruction(
+        i.opcode,
+        i.opname,
+        i.arg,
+        i.argval,
+        i.offset,
+        i.starts_line,
+        i.is_jump_target,
+    )
+
+
+class _NotProvided:
+    def __repr__(self):
+        return "_NotProvided"
+
+
+def create_instruction(name, *, arg=None, argval=_NotProvided, target=None):
     return Instruction(
         opcode=dis.opmap[name], opname=name, arg=arg, argval=argval, target=target
+    )
+
+
+def create_jump_absolute(target):
+    inst = "JUMP_FORWARD" if sys.version_info >= (3, 11) else "JUMP_ABSOLUTE"
+    return create_instruction(inst, target=target)
+
+
+def create_load_global(name, push_null):
+    return Instruction(
+        opcode=dis.opmap["LOAD_GLOBAL"],
+        opname="LOAD_GLOBAL",
+        arg=push_null,
+        argval=name,
     )
