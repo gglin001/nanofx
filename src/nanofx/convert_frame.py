@@ -5,6 +5,8 @@ import types
 
 from typing import Any, Callable
 
+from .bytecode_transformation import transform_code_object
+from .codegen import PyCodegen
 from .utils import print_bytecode, print_code
 
 
@@ -42,11 +44,24 @@ def convert_frame(frame: types.FrameType, compiler: Callable) -> Any:
 
     compiled_fn = compiler(code, None)
     compiled_fn = disable(compiled_fn)
-    frame.f_globals['__compiled_fn_0'] = compiled_fn
 
-    # TODO: add CALL_FUNCTION to compiled_fn
-    out_code = compiled_fn.__code__
-    # out_code = []
+    compiled_fn_name = f"__compiled_fn_{0}"
+    frame.f_globals[compiled_fn_name] = compiled_fn
+
+    def transform(instructions, code_options):
+        code_options['co_names'] += (compiled_fn_name,)
+
+        out_instructions = []
+        cg = PyCodegen()
+        cg.make_call_generated_code(compiled_fn_name)
+
+        out_instructions.extend(cg.get_instructions())
+        out_instructions.append(cg.create_load_const(None))
+        out_instructions.append(cg.create_instruction("RETURN_VALUE"))
+
+        instructions[:] = out_instructions
+
+    out_code = transform_code_object(code, transform)
 
     print_code(code, "RAW BYTECODE")
     print_bytecode(
@@ -54,7 +69,7 @@ def convert_frame(frame: types.FrameType, compiler: Callable) -> Any:
     )
 
     # debug, no trace
-    return None
+    # return None
 
     g = GuardedCode(out_code)
     return g

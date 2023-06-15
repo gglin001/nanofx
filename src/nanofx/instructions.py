@@ -22,6 +22,7 @@ class Instruction:
 
     # extra fields to make modification easier:
     target: Instruction | None = None
+    exn_tab_entry = None
 
     def __hash__(self):
         return id(self)
