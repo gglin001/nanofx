@@ -11,10 +11,12 @@ from typing import TYPE_CHECKING, Any, NamedTuple
 
 from .bytecode_transformation import (
     Instruction,
+    cleaned_instructions,
     create_instruction,
     create_jump_absolute,
 )
 from .output_graph import OutputGraph
+from .utils import log_code
 
 if TYPE_CHECKING:
     # import opcode
@@ -30,9 +32,11 @@ class SymVar:
         *,
         var: Any = None,
         vtype: Any = None,
+        tx: PyEvalBase = None,
     ) -> None:
         self.var = var
         self.vtype = vtype if var is None else type(var)
+        self.tx = tx
 
         self.id = f"id_{next(_sym_var_id_counter)}"
 
@@ -41,6 +45,13 @@ class SymVar:
 
     def __str__(self) -> str:
         return f"SymVar({self.vtype}, {self.id})"
+
+    def call(self, tx: PyEvalBase, *args: Any, **kwargs: Any) -> Any:
+        tx.inline_call_function(self, args, kwargs)
+
+
+def break_graph_if_unsupported(*, push):
+    pass
 
 
 class PyEvalState(NamedTuple):
@@ -62,17 +73,18 @@ class PyEvalBase:
         code_options: dict,
         symbolic_locals: OrderedDict[str, Any],
         symbolic_globals: OrderedDict[str, Any],
-        compiler_fn: callable,
         output: OutputGraph,
     ):
         self.instructions = instructions
         self.frame = frame
         self.code_options = code_options
         self.symbolic_globals = symbolic_globals
-        self.compiler_fn = compiler_fn
         self.output = output
 
         self.f_code: types.CodeType = frame.f_code
+        self.f_globals = frame.f_globals
+        self.f_locals = frame.f_locals
+        self.f_builtins = frame.f_builtins
         self.should_exit = False
 
         # checkpoint
@@ -108,7 +120,6 @@ class PyEvalBase:
 
     def step(self):
         """Process exactly one instruction, return True if should exit."""
-        assert isinstance(self.instruction_pointer, int)
         inst = self.instructions[self.instruction_pointer]
         self.current_instruction = inst
         self.instruction_pointer += 1
@@ -165,9 +176,8 @@ class PyEvalBase:
         # self.output.instructions.append(cg.create_instruction("RETURN_VALUE"))
 
     def run(self):
-        while not self.should_exit and not self.output.should_exit:
-            if self.step():
-                return
+        while not self.should_exit and not self.output.should_exit and not self.step():
+            pass
 
     def push(self, val: Any):
         self.stack.append(val)
@@ -178,6 +188,30 @@ class PyEvalBase:
     def popn(self, n: int) -> list[Any]:
         assert n >= 0
         return list(reversed([self.pop() for _ in range(n)]))
+
+    def inline_call_function(
+        self,
+        fn: SymVar,
+        args: list[SymVar],
+        kwargs: dict[str, SymVar],
+    ):
+        state = self.get_state()
+        try:
+            result = InlinePyEval.inline_call(self, fn, args, kwargs)
+            return result
+        except Exception:
+            self.set_state(state)
+            raise
+
+    def call_function(
+        self,
+        fn: SymVar,
+        args: list[SymVar],
+        kwargs: dict[str, SymVar],
+    ):
+        var = fn.call(self, *args, **kwargs)
+
+        self.push(SymVar(var=var, tx=self))
 
     # def POP_TOP(self, inst: Instruction):
     # def ROT_TWO(self, inst: Instruction):
@@ -200,13 +234,14 @@ class PyEvalBase:
     # def BINARY_MULTIPLY(self, inst: Instruction):
 
     # def BINARY_MODULO(self, inst: Instruction):
+
     def BINARY_ADD(self, inst: Instruction):
         fn = operator.add
 
         nargs = len(inspect.signature(fn).parameters)
         args = self.popn(nargs)
         assert type(args[0]) == type(args[1])
-        self.push(SymVar(vtype=args[0].vtype))
+        self.push(SymVar(vtype=args[0].vtype, tx=self))
 
     # def BINARY_SUBTRACT(self, inst: Instruction):
     # def BINARY_SUBSCR(self, inst: Instruction):
@@ -289,7 +324,18 @@ class PyEvalBase:
     # def POP_JUMP_IF_FALSE(self, inst: Instruction):
     # def POP_JUMP_IF_TRUE(self, inst: Instruction):
 
-    # def LOAD_GLOBAL(self, inst: Instruction):
+    def LOAD_GLOBAL(self, inst: Instruction):
+        name = inst.argval
+
+        if name in self.f_globals:
+            var = self.f_globals[name]
+        elif name in self.f_builtins:
+            var = self.f_builtins[name]
+        else:
+            raise Exception(f"name '{name}' is not found")
+
+        self.push(SymVar(var=var, tx=self))
+
     # def SETUP_FINALLY(self, inst: Instruction):
     def LOAD_FAST(self, inst: Instruction):
         name = inst.argval
@@ -303,7 +349,11 @@ class PyEvalBase:
     # def DELETE_FAST(self, inst: Instruction):
 
     # def RAISE_VARARGS(self, inst: Instruction):
-    # def CALL_FUNCTION(self, inst: Instruction):
+    def CALL_FUNCTION(self, inst: Instruction):
+        args = self.popn(inst.argval)
+        fn = self.pop()
+        self.call_function(fn, args, {})
+
     # def MAKE_FUNCTION(self, inst: Instruction):
     # def BUILD_SLICE(self, inst: Instruction):
     # def LOAD_CLOSURE(self, inst: Instruction):
@@ -341,7 +391,71 @@ class PyEvalBase:
 
 
 class InlinePyEval(PyEvalBase):
-    pass
+    def __init__(
+        self,
+        *,
+        parent: PyEvalBase,
+        code: types.CodeType,
+        symbolic_locals: OrderedDict[str, Any],
+        symbolic_globals: OrderedDict[str, Any],
+    ):
+        super().__init__(
+            instructions=cleaned_instructions(code),
+            frame=parent.frame,
+            code_options={k: getattr(code, k) for k in dir(code)},
+            symbolic_locals=symbolic_locals,
+            symbolic_globals=symbolic_globals,
+            output=parent.output,
+        )
+        self.parent = parent
+        self.symbolic_result = None
+        # TODO
+        # self.closure_cells = closure_cells
+
+    @classmethod
+    def inline_call(
+        cls,
+        parent: PyEvalBase,
+        func: SymVar,
+        args: list[SymVar],
+        kwargs: dict[str, SymVar],
+    ):
+        code = func.var.__code__
+        if code.co_name in ("__setitem__", "__setattr__"):
+            raise NotImplementedError(f"inline_call {code.co_name}")
+
+        logging.debug(f"INLINING {code}")
+        log_code(code, "INLINE CODE")
+
+        # TODO: bind_args()
+        bound = inspect.signature(func.var).bind(*args, **kwargs)
+        bound.apply_defaults()
+        sub_locals = dict(bound.arguments.items())
+
+        tracer = InlinePyEval(
+            parent=parent,
+            code=code,
+            symbolic_locals=sub_locals,
+            symbolic_globals=parent.symbolic_globals,
+        )
+
+        try:
+            tracer.run()
+        except Exception:
+            logging.debug(f"FAILED INLINING {code}")
+            raise
+        assert tracer.symbolic_result is not None
+
+        if tracer.f_globals is parent.f_globals:
+            # Merge symbolic_globals back if parent and child are in the same namespace
+            parent.symbolic_globals.update(tracer.symbolic_globals)
+
+        logging.debug(f"DONE INLINING {code}")
+        return tracer.symbolic_result
+
+    def RETURN_VALUE(self, inst: Instruction):
+        self.symbolic_result = self.pop()
+        self.should_exit = True
 
 
 class PyEval(PyEvalBase):
@@ -358,7 +472,6 @@ class PyEval(PyEvalBase):
             code_options=code_options,
             symbolic_locals=OrderedDict(),
             symbolic_globals=OrderedDict(),
-            compiler_fn=compiler_fn,
             output=OutputGraph(
                 frame=frame,
                 code_options=code_options,
@@ -371,4 +484,4 @@ class PyEval(PyEvalBase):
         vars = list(code_options["co_varnames"])
         for k in vars:
             if k in frame.f_locals:
-                self.symbolic_locals[k] = SymVar(var=frame.f_locals[k])
+                self.symbolic_locals[k] = SymVar(var=frame.f_locals[k], tx=self)

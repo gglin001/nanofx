@@ -9,7 +9,7 @@ from typing import Any
 from .bytecode_transformation import Instruction, transform_code_object
 from .ceval import PyEval
 from .paddle_utils import Tensor, skip_paddle_frame
-from .utils import print_bytecode, print_code
+from .utils import log_bytecode, log_code
 
 
 @dataclasses.dataclass
@@ -41,12 +41,11 @@ def convert_frame(frame: types.FrameType, compiler_fn: callable) -> Any:
 
     logging.debug(f"convert_frame: {frame}")
     code = frame.f_code
+    log_code(code, "RAW BYTECODE")
 
     # TODO: rm torch code dependency
     out_code = transform_code_object(code, transform)
-
-    print_code(code, "RAW BYTECODE")
-    print_bytecode(
+    log_bytecode(
         "NEW BYTECODE", code.co_name, code.co_filename, code.co_firstlineno, out_code
     )
 
