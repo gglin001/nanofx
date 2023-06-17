@@ -49,7 +49,7 @@ def optimize(backend: callable):
                 result = convert_frame(frame, backend)
                 return result
             except NotImplementedError as e:
-                logging.debug(f"NotImplementedError: {e}")
+                logging.debug(f"!! NotImplementedError: {e}")
             except Exception:
                 raise
             return None

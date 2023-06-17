@@ -147,7 +147,7 @@ class PyEvalBase:
             # return True if should exit
             return inst.opname == "RETURN_VALUE"
         except NotImplementedError as e:
-            logging.debug(f"NotImplementedError: {e}")
+            logging.debug(f"!! NotImplementedError: {e}")
         except Exception:
             raise
 
