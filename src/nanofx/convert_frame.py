@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 from .bytecode_transformation import Instruction, transform_code_object
 from .ceval import PyEval
+from .paddle_utils import Tensor, skip_paddle_frame
 from .utils import print_bytecode, print_code
 
 
@@ -16,18 +17,11 @@ class GuardedCode:
 
 
 def skip_frame(frame: types.FrameType) -> bool:
-    import paddle
-
-    # NOTE: skip paddle internal code
-    if frame.f_code.co_filename.endswith('paddle/fluid/dygraph/math_op_patch.py'):
-        return True
-    elif frame.f_code.co_filename.endswith('paddle/fluid/framework.py'):
-        return True
-    elif frame.f_code.co_name == 'in_dygraph_mode':
+    if skip_paddle_frame(frame):
         return True
 
     for v in frame.f_locals.values():
-        if isinstance(v, paddle.Tensor):
+        if isinstance(v, Tensor):
             return False
 
     return True
