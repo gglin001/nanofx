@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import types
 
 from typing import Any
@@ -38,7 +39,7 @@ def convert_frame(frame: types.FrameType, compiler_fn: callable) -> Any:
         code_options.update(tracer.output.code_options)
         instructions[:] = tracer.output.instructions
 
-    print(f"convert_frame: {frame}")
+    logging.debug(f"convert_frame: {frame}")
     code = frame.f_code
 
     # TODO: rm torch code dependency

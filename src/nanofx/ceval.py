@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import itertools
+import logging
 import operator
 import types
 
@@ -118,12 +119,12 @@ class PyEvalBase:
             self.next_instruction = None
         if inst.starts_line and self.lineno != inst.starts_line:
             self.lineno = inst.starts_line
-            print(f"TRACE starts_line {self.f_code.co_filename}:{self.lineno}")
+            logging.debug(f"TRACE starts_line {self.f_code.co_filename}:{self.lineno}")
 
         if len(self.stack) == 0:
             self.checkpoint = inst, self.get_state()
 
-        print(f"TRACE {inst.opname} {inst.argval} {self.stack}")
+        logging.debug(f"TRACE {inst.opname} {inst.argval} {self.stack}")
 
         try:
             if not hasattr(self, inst.opname):
@@ -133,12 +134,12 @@ class PyEvalBase:
             # return True if should exit
             return inst.opname == "RETURN_VALUE"
         except NotImplementedError as e:
-            print(f"NotImplementedError: {e}")
+            logging.debug(f"NotImplementedError: {e}")
         except Exception:
             raise
 
         # fallback
-        print(f"graph break from {inst.opname} {inst.argval}")
+        logging.debug(f"graph break from {inst.opname} {inst.argval}")
         assert not self.output.instructions
         assert self.checkpoint is not None
         continue_inst, state = self.checkpoint

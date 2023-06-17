@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dis
+import logging
 import types
 
 
@@ -9,7 +10,7 @@ def format_bytecode(prefix, name, filename, line_no, code):
 
 
 def print_bytecode(prefix, name, filename, line_no, code):
-    print(format_bytecode(prefix, name, filename, line_no, code))
+    logging.debug(format_bytecode(prefix, name, filename, line_no, code))
 
 
 def print_code(code: types.CodeType, prefix=''):

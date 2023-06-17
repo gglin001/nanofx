@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 import types
 
 from ._eval_frame import set_eval_frame
@@ -48,7 +49,7 @@ def optimize(backend: callable):
                 result = convert_frame(frame, backend)
                 return result
             except NotImplementedError as e:
-                print(f"NotImplementedError: {e}")
+                logging.debug(f"NotImplementedError: {e}")
             except Exception:
                 raise
             return None
