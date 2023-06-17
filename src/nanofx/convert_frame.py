@@ -5,8 +5,8 @@ import types
 
 from typing import Any, Callable
 
-from .bytecode_transformation import transform_code_object
-from .codegen import PyCodegen
+from .bytecode_transformation import Instruction, transform_code_object
+from .ceval import PyEval
 from .utils import print_bytecode, print_code
 
 
@@ -33,34 +33,21 @@ def skip_frame(frame: types.FrameType) -> bool:
     return True
 
 
-def convert_frame(frame: types.FrameType, compiler: Callable) -> Any:
-    from .eval_frame import disable
-
+def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
     if skip_frame(frame):
         return None
 
     print(f"convert_frame: {frame}")
     code = frame.f_code
 
-    compiled_fn = compiler(code, None)
-    compiled_fn = disable(compiled_fn)
+    def transform(instructions: list[Instruction], code_options: dict):
+        tracer = PyEval(instructions, frame, code_options, compiler_fn)
+        tracer.run()
 
-    compiled_fn_name = f"__compiled_fn_{0}"
-    frame.f_globals[compiled_fn_name] = compiled_fn
+        code_options.update(tracer.output.code_options)
+        instructions[:] = tracer.output.instructions
 
-    def transform(instructions, code_options):
-        code_options['co_names'] += (compiled_fn_name,)
-
-        out_instructions = []
-        cg = PyCodegen()
-        cg.make_call_generated_code(compiled_fn_name)
-
-        out_instructions.extend(cg.get_instructions())
-        out_instructions.append(cg.create_load_const(None))
-        out_instructions.append(cg.create_instruction("RETURN_VALUE"))
-
-        instructions[:] = out_instructions
-
+    # TODO: rm torch code dependency
     out_code = transform_code_object(code, transform)
 
     print_code(code, "RAW BYTECODE")
