@@ -5,9 +5,7 @@ import sys
 
 from typing import TYPE_CHECKING
 
-from .instructions import Instruction, create_instruction, create_load_global
-
-# from .bytecode_transformation import transform_code_object
+from .bytecode_transformation import *  # noqa
 
 if TYPE_CHECKING:
     pass
@@ -18,25 +16,24 @@ class PyCodegen:
         self,
         tx=None,
         graph_output_var: str = None,
-        tempvars=None,
     ):
-        self.top_of_stack = None
-        self.uses = collections.Counter()
-        self.graph_outputs = collections.OrderedDict()
-        self._output: list[Instruction] = []
-        self.tempvars = tempvars or {}
-        self.tx = tx
         self.graph_output_var = graph_output_var
+
+        self.tx = tx
         # self.code_options = self.tx.output.code_options
         # self.cell_and_freevars = self.tx.cell_and_freevars
         # self.new_var = self.tx.output.new_var
 
+        self.top_of_stack = None
+        self.graph_outputs = collections.OrderedDict()
+        self._output: list[Instruction] = []
+
     def graph_output_vars(self):
         return [x.variable for x in self.graph_outputs.values()]
 
-    def __call__(self, value, allow_cache=True):
+    def __call__(self, value):
         """Generate code such that top-of-stack (TOS) is set to value."""
-        #
+
         if isinstance(value, Source):
             self._output.extend(value.reconstruct(self))
             self.clear_tos()
@@ -50,25 +47,7 @@ class PyCodegen:
             output.append(create_dup_top())
             return
 
-        if allow_cache:
-            if value.mutable_local and value.mutable_local in self.tempvars:
-                output.append(self.create_load(self.tempvars[value.mutable_local]))
-                self.top_of_stack = value
-                return
-            if self.tempvars.get(value) is not None:
-                output.append(self.create_load(self.tempvars[value]))
-                self.top_of_stack = value
-                return
-
-        if (
-            value.source is not None
-            and allow_cache
-            and not isinstance(value.source, GeneratorStateSource)
-        ):
-            output.extend(value.source.reconstruct(self))
-        elif value.is_python_constant() and is_safe_constant(
-            value.as_python_constant()
-        ):
+        if value.is_python_constant() and is_safe_constant(value.as_python_constant()):
             output.append(self.create_load_const(value.as_python_constant()))
         elif isinstance(
             value,
@@ -104,24 +83,12 @@ class PyCodegen:
                     [self.create_load_attr("item")] + create_call_function(0, True)
                 )
         else:
-            # TODO
-            self.uses[value] += 1
             try:
                 output.extend(value.reconstruct(self))
             except NotImplementedError:
                 unimplemented(f"reconstruct: {value}")
-            if allow_cache and value in self.tempvars:
-                self._output.append(create_dup_top())
-                self.add_cache(value)
 
         self.top_of_stack = value
-
-    def add_cache(self, value):
-        var = self.new_var()
-        self.tempvars[value] = var
-        if value.mutable_local:
-            self.tempvars[value.mutable_local] = var
-        self._output.append(self.create_store(var))
 
     def foreach(self, items):
         for i in items:
@@ -144,18 +111,10 @@ class PyCodegen:
         return self._output
 
     def create_load(self, name):
-        if name in self.cell_and_freevars():
-            return create_instruction("LOAD_DEREF", argval=name)
         assert name in self.code_options["co_varnames"], f"{name} missing"
         return create_instruction("LOAD_FAST", argval=name)
 
-    def create_load_closure(self, name):
-        assert name in self.cell_and_freevars()
-        return create_instruction("LOAD_CLOSURE", argval=name)
-
     def create_store(self, name):
-        if name in self.cell_and_freevars():
-            return create_instruction("STORE_DEREF", argval=name)
         assert name in self.code_options["co_varnames"]
         return create_instruction("STORE_FAST", argval=name)
 
@@ -203,16 +162,6 @@ class PyCodegen:
                 create_instruction("UNPACK_SEQUENCE", arg=n),
             ]
 
-    def pop_null(self):
-        # POP_TOP doesn't work for null, so we pop nulls by pushing in a
-        # nop function, calling it (which consumes the null), and popping the result.
-        assert sys.version_info >= (3, 11)
-        return [
-            self._create_load_const(lambda: None),
-            *create_call_function(0, False),
-            create_instruction("POP_TOP"),
-        ]
-
     def create_call_function_kw(self, nargs, kw_names, push_null):
         if sys.version_info >= (3, 11):
             output = create_call_function(nargs, push_null)
@@ -226,11 +175,7 @@ class PyCodegen:
         ]
 
     def make_call_generated_code(self, fn_name: str):
-        load_function = create_instruction(
-            "LOAD_GLOBAL",
-            argval=fn_name,
-            arg=0,
-        )
+        load_function = create_load_global(fn_name, False)
         self.extend_output([load_function])
 
         # placeholders = self.tx.output.placeholders
