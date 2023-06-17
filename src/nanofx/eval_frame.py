@@ -44,8 +44,14 @@ def disable(fn=None):
 def optimize(backend: callable):
     def _fn(backend: callable):
         def __fn(frame: types.FrameType):
-            result = convert_frame(frame, backend)
-            return result
+            try:
+                result = convert_frame(frame, backend)
+                return result
+            except NotImplementedError as e:
+                print(f"NotImplementedError: {e}")
+            except Exception:
+                raise
+            return None
 
         return __fn
 

@@ -26,7 +26,8 @@ class OutputGraph:
         self.should_exit = False
 
     def compile_subgraph(self, tx: PyEval):
-        pass
+        # TODO
+        raise NotImplementedError(f"Notimplemented compile_subgraph() ")
 
     def add_output_instructions(self, insts: list[Instruction]) -> None:
         self.instructions.extend(insts)

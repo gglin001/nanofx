@@ -74,7 +74,7 @@ class PyEvalBase:
         self.f_code: types.CodeType = frame.f_code
         self.should_exit = False
 
-        # checkpoint status
+        # checkpoint
         self.checkpoint: tuple[Instruction, PyEvalState] | None = None
         self.symbolic_locals = symbolic_locals
         self.stack = []
@@ -133,9 +133,9 @@ class PyEvalBase:
             # return True if should exit
             return inst.opname == "RETURN_VALUE"
         except NotImplementedError as e:
-            print(f"{e}")
-        except Exception as e:
-            raise e
+            print(f"NotImplementedError: {e}")
+        except Exception:
+            raise
 
         # fallback
         print(f"graph break from {inst.opname} {inst.argval}")
