@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import inspect
+import itertools
+import operator
 import types
 
 from collections import OrderedDict
@@ -15,6 +18,28 @@ from .output_graph import OutputGraph
 if TYPE_CHECKING:
     # import opcode
     pass
+
+
+_sym_var_id_counter = itertools.count()
+
+
+class SymVar:
+    def __init__(
+        self,
+        *,
+        var: Any = None,
+        vtype: Any = None,
+    ) -> None:
+        self.var = var
+        self.vtype = vtype if var is None else type(var)
+
+        self.id = f"id_{next(_sym_var_id_counter)}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
+    def __str__(self) -> str:
+        return f"SymVar({self.vtype}, {self.id})"
 
 
 class PyEvalState(NamedTuple):
@@ -175,7 +200,12 @@ class PyEvalBase:
 
     # def BINARY_MODULO(self, inst: Instruction):
     def BINARY_ADD(self, inst: Instruction):
-        raise NotImplementedError(f"NotImplementedError: {inst.opname}")
+        fn = operator.add
+
+        nargs = len(inspect.signature(fn).parameters)
+        args = self.popn(nargs)
+        assert type(args[0]) == type(args[1])
+        self.push(SymVar(vtype=args[0].vtype))
 
     # def BINARY_SUBTRACT(self, inst: Instruction):
     # def BINARY_SUBSCR(self, inst: Instruction):
@@ -340,4 +370,4 @@ class PyEval(PyEvalBase):
         vars = list(code_options["co_varnames"])
         for k in vars:
             if k in frame.f_locals:
-                self.symbolic_locals[k] = frame.f_locals[k]
+                self.symbolic_locals[k] = SymVar(var=frame.f_locals[k])
