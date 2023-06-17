@@ -37,15 +37,15 @@ def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
     if skip_frame(frame):
         return None
 
-    print(f"convert_frame: {frame}")
-    code = frame.f_code
-
     def transform(instructions: list[Instruction], code_options: dict):
         tracer = PyEval(instructions, frame, code_options, compiler_fn)
         tracer.run()
 
         code_options.update(tracer.output.code_options)
         instructions[:] = tracer.output.instructions
+
+    print(f"convert_frame: {frame}")
+    code = frame.f_code
 
     # TODO: rm torch code dependency
     out_code = transform_code_object(code, transform)

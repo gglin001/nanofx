@@ -22,3 +22,12 @@ class OutputGraph:
         self.code_options = code_options
         self.compiler_fn = compiler_fn
         self.root_tx = root_tx
+
+        self.should_exit = False
+
+    def compile_subgraph(self, tx: PyEval):
+        pass
+
+    def add_output_instructions(self, insts: list[Instruction]) -> None:
+        self.instructions.extend(insts)
+        self.should_exit = True
