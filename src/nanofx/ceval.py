@@ -69,22 +69,24 @@ class PyEvalBase:
         self,
         *,
         instructions: list[Instruction],
-        frame: types.FrameType,
         code_options: dict,
+        f_code: types.CodeType,
+        f_locals: dict[str, Any],
+        f_globals: dict[str, Any],
+        f_builtins: dict[str, Any],
         symbolic_locals: OrderedDict[str, Any],
         symbolic_globals: OrderedDict[str, Any],
         output: OutputGraph,
     ):
         self.instructions = instructions
-        self.frame = frame
         self.code_options = code_options
         self.symbolic_globals = symbolic_globals
         self.output = output
 
-        self.f_code: types.CodeType = frame.f_code
-        self.f_globals = frame.f_globals
-        self.f_locals = frame.f_locals
-        self.f_builtins = frame.f_builtins
+        self.f_code: types.CodeType = f_code
+        self.f_globals = f_globals
+        self.f_locals = f_locals
+        self.f_builtins = f_builtins
         self.should_exit = False
 
         # checkpoint
@@ -211,7 +213,7 @@ class PyEvalBase:
     ):
         var = fn.call(self, *args, **kwargs)
 
-        self.push(SymVar(var=var, tx=self))
+        self.push(SymVar(var=var))
 
     # def POP_TOP(self, inst: Instruction):
     # def ROT_TWO(self, inst: Instruction):
@@ -241,7 +243,7 @@ class PyEvalBase:
         nargs = len(inspect.signature(fn).parameters)
         args = self.popn(nargs)
         assert type(args[0]) == type(args[1])
-        self.push(SymVar(vtype=args[0].vtype, tx=self))
+        self.push(SymVar(vtype=args[0].vtype))
 
     # def BINARY_SUBTRACT(self, inst: Instruction):
     # def BINARY_SUBSCR(self, inst: Instruction):
@@ -334,7 +336,7 @@ class PyEvalBase:
         else:
             raise Exception(f"name '{name}' is not found")
 
-        self.push(SymVar(var=var, tx=self))
+        self.push(SymVar(var=var))
 
     # def SETUP_FINALLY(self, inst: Instruction):
     def LOAD_FAST(self, inst: Instruction):
@@ -398,11 +400,16 @@ class InlinePyEval(PyEvalBase):
         code: types.CodeType,
         symbolic_locals: OrderedDict[str, Any],
         symbolic_globals: OrderedDict[str, Any],
+        func: SymVar,
     ):
+        f_globals = func.var.__globals__
         super().__init__(
             instructions=cleaned_instructions(code),
-            frame=parent.frame,
             code_options={k: getattr(code, k) for k in dir(code)},
+            f_code=code,
+            f_locals={},
+            f_globals=f_globals,
+            f_builtins=f_globals['__builtins__'],
             symbolic_locals=symbolic_locals,
             symbolic_globals=symbolic_globals,
             output=parent.output,
@@ -437,6 +444,7 @@ class InlinePyEval(PyEvalBase):
             code=code,
             symbolic_locals=sub_locals,
             symbolic_globals=parent.symbolic_globals,
+            func=func,
         )
 
         try:
@@ -468,7 +476,10 @@ class PyEval(PyEvalBase):
     ):
         super().__init__(
             instructions=instructions,
-            frame=frame,
+            f_code=frame.f_code,
+            f_locals=frame.f_locals,
+            f_globals=frame.f_globals,
+            f_builtins=frame.f_builtins,
             code_options=code_options,
             symbolic_locals=OrderedDict(),
             symbolic_globals=OrderedDict(),
@@ -484,4 +495,4 @@ class PyEval(PyEvalBase):
         vars = list(code_options["co_varnames"])
         for k in vars:
             if k in frame.f_locals:
-                self.symbolic_locals[k] = SymVar(var=frame.f_locals[k], tx=self)
+                self.symbolic_locals[k] = SymVar(var=frame.f_locals[k])
