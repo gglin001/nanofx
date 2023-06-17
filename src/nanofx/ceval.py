@@ -2,18 +2,24 @@ from __future__ import annotations
 
 import types
 
-from typing import TYPE_CHECKING, NamedTuple
+from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from .bytecode_transformation import Instruction, create_jump_absolute
+from .bytecode_transformation import (
+    Instruction,
+    create_instruction,
+    create_jump_absolute,
+)
 from .output_graph import OutputGraph
 
 if TYPE_CHECKING:
+    # import opcode
     pass
 
 
 class PyEvalState(NamedTuple):
     # output: OutputGraphState
-    # symbolic_locals: Dict[str, VariableTracker]
+    symbolic_locals: OrderedDict[str, Any]
     stack: list
     instruction_pointer: int
     current_instruction: Instruction | None
@@ -24,23 +30,28 @@ class PyEvalState(NamedTuple):
 class PyEvalBase:
     def __init__(
         self,
+        *,
         instructions: list[Instruction],
         frame: types.FrameType,
         code_options: dict,
+        symbolic_locals: OrderedDict[str, Any],
+        symbolic_globals: OrderedDict[str, Any],
         compiler_fn: callable,
         output: OutputGraph,
     ):
         self.instructions = instructions
         self.frame = frame
+        self.code_options = code_options
+        self.symbolic_globals = symbolic_globals
         self.compiler_fn = compiler_fn
         self.output = output
-        self.code_options = code_options
 
         self.f_code: types.CodeType = frame.f_code
         self.should_exit = False
 
         # checkpoint status
         self.checkpoint: tuple[Instruction, PyEvalState] | None = None
+        self.symbolic_locals = symbolic_locals
         self.stack = []
         self.instruction_pointer = 0
         self.current_instruction: Instruction = None
@@ -49,8 +60,8 @@ class PyEvalBase:
 
     def get_state(self):
         return PyEvalState(
-            # self.output.copy_graphstate(),
-            # collections.OrderedDict(self.symbolic_locals),
+            # self.output.get_state(),
+            self.symbolic_locals,
             self.stack,
             self.instruction_pointer,
             self.current_instruction,
@@ -61,7 +72,7 @@ class PyEvalBase:
     def set_state(self, state: PyEvalState):
         (
             # output_state,
-            # self.symbolic_locals,
+            self.symbolic_locals,
             self.stack,
             self.instruction_pointer,
             self.current_instruction,
@@ -82,12 +93,12 @@ class PyEvalBase:
             self.next_instruction = None
         if inst.starts_line and self.lineno != inst.starts_line:
             self.lineno = inst.starts_line
-            print(f"TRACE starts_line %s:%s", self.f_code.co_filename, self.lineno)
+            print(f"TRACE starts_line {self.f_code.co_filename}:{self.lineno}")
 
         if len(self.stack) == 0:
             self.checkpoint = inst, self.get_state()
 
-        print("TRACE %s %s %s", inst.opname, inst.argval, self.stack)
+        print(f"TRACE {inst.opname} {inst.argval} {self.stack}")
 
         try:
             if not hasattr(self, inst.opname):
@@ -95,15 +106,14 @@ class PyEvalBase:
             getattr(self, inst.opname)(inst)
 
             # return True if should exit
-            # return inst.opname == "RETURN_VALUE"
-            if inst.opname == "RETURN_VALUE":
-                return True
+            return inst.opname == "RETURN_VALUE"
         except NotImplementedError as e:
-            print(f"NotImplementedError raised")
+            print(f"{e}")
         except Exception as e:
             raise e
 
         # fallback
+        print(f"graph break from {inst.opname} {inst.argval}")
         assert not self.output.instructions
         assert self.checkpoint is not None
         continue_inst, state = self.checkpoint
@@ -133,6 +143,16 @@ class PyEvalBase:
             if self.step():
                 return
 
+    def push(self, val: Any):
+        self.stack.append(val)
+
+    def pop(self) -> Any:
+        return self.stack.pop()
+
+    def popn(self, n: int) -> list[Any]:
+        assert n >= 0
+        return list(reversed([self.pop() for _ in range(n)]))
+
     # def POP_TOP(self, inst: Instruction):
     # def ROT_TWO(self, inst: Instruction):
     # def ROT_THREE(self, inst: Instruction):
@@ -154,7 +174,9 @@ class PyEvalBase:
     # def BINARY_MULTIPLY(self, inst: Instruction):
 
     # def BINARY_MODULO(self, inst: Instruction):
-    # def BINARY_ADD(self, inst: Instruction):
+    def BINARY_ADD(self, inst: Instruction):
+        raise NotImplementedError(f"NotImplementedError: {inst.opname}")
+
     # def BINARY_SUBTRACT(self, inst: Instruction):
     # def BINARY_SUBSCR(self, inst: Instruction):
     # def BINARY_FLOOR_DIVIDE(self, inst: Instruction):
@@ -195,7 +217,11 @@ class PyEvalBase:
     # def INPLACE_OR(self, inst: Instruction):
     # def WITH_CLEANUP_START(self, inst: Instruction):
     # def WITH_CLEANUP_FINISH(self, inst: Instruction):
-    # def RETURN_VALUE(self, inst: Instruction):
+    def RETURN_VALUE(self, inst: Instruction):
+        self.should_exit = True
+        self.output.compile_subgraph(self)
+        self.output.add_output_instructions([create_instruction("RETURN_VALUE")])
+
     # def IMPORT_STAR(self, inst: Instruction):
     # def SETUP_ANNOTATIONS(self, inst: Instruction):
     # def YIELD_VALUE(self, inst: Instruction):
@@ -212,8 +238,7 @@ class PyEvalBase:
     # def DELETE_ATTR(self, inst: Instruction):
     # def STORE_GLOBAL(self, inst: Instruction):
     # def DELETE_GLOBAL(self, inst: Instruction):
-    def LOAD_CONST(self, inst: Instruction):
-        pass
+    # def LOAD_CONST(self, inst: Instruction):
 
     # def LOAD_NAME(self, inst: Instruction):
     # def BUILD_TUPLE(self, inst: Instruction):
@@ -235,8 +260,15 @@ class PyEvalBase:
 
     # def LOAD_GLOBAL(self, inst: Instruction):
     # def SETUP_FINALLY(self, inst: Instruction):
-    # def LOAD_FAST(self, inst: Instruction):
-    # def STORE_FAST(self, inst: Instruction):
+    def LOAD_FAST(self, inst: Instruction):
+        name = inst.argval
+        self.push(self.symbolic_locals[name])
+        if name.startswith("___stack"):
+            self.symbolic_locals.pop(name)
+
+    def STORE_FAST(self, inst: Instruction):
+        self.symbolic_locals[inst.argval] = self.pop()
+
     # def DELETE_FAST(self, inst: Instruction):
 
     # def RAISE_VARARGS(self, inst: Instruction):
@@ -290,14 +322,22 @@ class PyEval(PyEvalBase):
         compiler_fn: callable,
     ):
         super().__init__(
-            instructions,
-            frame,
-            code_options,
-            compiler_fn,
-            OutputGraph(
+            instructions=instructions,
+            frame=frame,
+            code_options=code_options,
+            symbolic_locals=OrderedDict(),
+            symbolic_globals=OrderedDict(),
+            compiler_fn=compiler_fn,
+            output=OutputGraph(
                 frame=frame,
                 code_options=code_options,
                 compiler_fn=compiler_fn,
                 root_tx=self,
             ),
         )
+
+        # TODO: support co_cellvars & co_freevars
+        vars = list(code_options["co_varnames"])
+        for k in vars:
+            if k in frame.f_locals:
+                self.symbolic_locals[k] = frame.f_locals[k]
