@@ -103,10 +103,9 @@ class PyEvalBase:
         except Exception as e:
             raise e
 
-        # generate code from checkpoint
-        # assert not self.output.output_instructions
-        # assert self.checkpoint is not None
-
+        # fallback
+        assert not self.output.instructions
+        assert self.checkpoint is not None
         continue_inst, state = self.checkpoint
         self.set_state(state)
         self.output.compile_subgraph(self)
@@ -133,6 +132,149 @@ class PyEvalBase:
         while not self.should_exit and not self.output.should_exit:
             if self.step():
                 return
+
+    # def POP_TOP(self, inst: Instruction):
+    # def ROT_TWO(self, inst: Instruction):
+    # def ROT_THREE(self, inst: Instruction):
+    # def DUP_TOP(self, inst: Instruction):
+    # def DUP_TOP_TWO(self, inst: Instruction):
+    # def ROT_FOUR(self, inst: Instruction):
+
+    # def NOP(self, inst: Instruction):
+    # def UNARY_POSITIVE(self, inst: Instruction):
+    # def UNARY_NEGATIVE(self, inst: Instruction):
+    # def UNARY_NOT(self, inst: Instruction):
+
+    # def UNARY_INVERT(self, inst: Instruction):
+
+    # def BINARY_MATRIX_MULTIPLY(self, inst: Instruction):
+    # def INPLACE_MATRIX_MULTIPLY(self, inst: Instruction):
+
+    # def BINARY_POWER(self, inst: Instruction):
+    # def BINARY_MULTIPLY(self, inst: Instruction):
+
+    # def BINARY_MODULO(self, inst: Instruction):
+    # def BINARY_ADD(self, inst: Instruction):
+    # def BINARY_SUBTRACT(self, inst: Instruction):
+    # def BINARY_SUBSCR(self, inst: Instruction):
+    # def BINARY_FLOOR_DIVIDE(self, inst: Instruction):
+    # def BINARY_TRUE_DIVIDE(self, inst: Instruction):
+    # def INPLACE_FLOOR_DIVIDE(self, inst: Instruction):
+    # def INPLACE_TRUE_DIVIDE(self, inst: Instruction):
+
+    # def GET_AITER(self, inst: Instruction):
+    # def GET_ANEXT(self, inst: Instruction):
+    # def BEFORE_ASYNC_WITH(self, inst: Instruction):
+    # def BEGIN_FINALLY(self, inst: Instruction):
+    # def END_ASYNC_FOR(self, inst: Instruction):
+    # def INPLACE_ADD(self, inst: Instruction):
+    # def INPLACE_SUBTRACT(self, inst: Instruction):
+    # def INPLACE_MULTIPLY(self, inst: Instruction):
+
+    # def INPLACE_MODULO(self, inst: Instruction):
+    # def STORE_SUBSCR(self, inst: Instruction):
+    # def DELETE_SUBSCR(self, inst: Instruction):
+    # def BINARY_LSHIFT(self, inst: Instruction):
+    # def BINARY_RSHIFT(self, inst: Instruction):
+    # def BINARY_AND(self, inst: Instruction):
+    # def BINARY_XOR(self, inst: Instruction):
+    # def BINARY_OR(self, inst: Instruction):
+    # def INPLACE_POWER(self, inst: Instruction):
+    # def GET_ITER(self, inst: Instruction):
+    # def GET_YIELD_FROM_ITER(self, inst: Instruction):
+
+    # def PRINT_EXPR(self, inst: Instruction):
+    # def LOAD_BUILD_CLASS(self, inst: Instruction):
+    # def YIELD_FROM(self, inst: Instruction):
+    # def GET_AWAITABLE(self, inst: Instruction):
+
+    # def INPLACE_LSHIFT(self, inst: Instruction):
+    # def INPLACE_RSHIFT(self, inst: Instruction):
+    # def INPLACE_AND(self, inst: Instruction):
+    # def INPLACE_XOR(self, inst: Instruction):
+    # def INPLACE_OR(self, inst: Instruction):
+    # def WITH_CLEANUP_START(self, inst: Instruction):
+    # def WITH_CLEANUP_FINISH(self, inst: Instruction):
+    # def RETURN_VALUE(self, inst: Instruction):
+    # def IMPORT_STAR(self, inst: Instruction):
+    # def SETUP_ANNOTATIONS(self, inst: Instruction):
+    # def YIELD_VALUE(self, inst: Instruction):
+    # def POP_BLOCK(self, inst: Instruction):
+    # def END_FINALLY(self, inst: Instruction):
+    # def POP_EXCEPT(self, inst: Instruction):
+
+    # def STORE_NAME(self, inst: Instruction):
+    # def DELETE_NAME(self, inst: Instruction):
+    # def UNPACK_SEQUENCE(self, inst: Instruction):
+    # def FOR_ITER(self, inst: Instruction):
+    # def UNPACK_EX(self, inst: Instruction):
+    # def STORE_ATTR(self, inst: Instruction):
+    # def DELETE_ATTR(self, inst: Instruction):
+    # def STORE_GLOBAL(self, inst: Instruction):
+    # def DELETE_GLOBAL(self, inst: Instruction):
+    def LOAD_CONST(self, inst: Instruction):
+        pass
+
+    # def LOAD_NAME(self, inst: Instruction):
+    # def BUILD_TUPLE(self, inst: Instruction):
+    # def BUILD_LIST(self, inst: Instruction):
+    # def BUILD_SET(self, inst: Instruction):
+    # def BUILD_MAP(self, inst: Instruction):
+    # def LOAD_ATTR(self, inst: Instruction):
+    # def COMPARE_OP(self, inst: Instruction):
+
+    # def IMPORT_NAME(self, inst: Instruction):
+    # def IMPORT_FROM(self, inst: Instruction):
+
+    # def JUMP_FORWARD(self, inst: Instruction):
+    # def JUMP_IF_FALSE_OR_POP(self, inst: Instruction):
+    # def JUMP_IF_TRUE_OR_POP(self, inst: Instruction):
+    # def JUMP_ABSOLUTE(self, inst: Instruction):
+    # def POP_JUMP_IF_FALSE(self, inst: Instruction):
+    # def POP_JUMP_IF_TRUE(self, inst: Instruction):
+
+    # def LOAD_GLOBAL(self, inst: Instruction):
+    # def SETUP_FINALLY(self, inst: Instruction):
+    # def LOAD_FAST(self, inst: Instruction):
+    # def STORE_FAST(self, inst: Instruction):
+    # def DELETE_FAST(self, inst: Instruction):
+
+    # def RAISE_VARARGS(self, inst: Instruction):
+    # def CALL_FUNCTION(self, inst: Instruction):
+    # def MAKE_FUNCTION(self, inst: Instruction):
+    # def BUILD_SLICE(self, inst: Instruction):
+    # def LOAD_CLOSURE(self, inst: Instruction):
+    # def LOAD_DEREF(self, inst: Instruction):
+    # def STORE_DEREF(self, inst: Instruction):
+    # def DELETE_DEREF(self, inst: Instruction):
+
+    # def CALL_FUNCTION_KW(self, inst: Instruction):
+    # def CALL_FUNCTION_EX(self, inst: Instruction):
+
+    # def SETUP_WITH(self, inst: Instruction):
+
+    # def LIST_APPEND(self, inst: Instruction):
+    # def SET_ADD(self, inst: Instruction):
+    # def MAP_ADD(self, inst: Instruction):
+    # def LOAD_CLASSDEREF(self, inst: Instruction):
+    # def EXTENDED_ARG(self, inst: Instruction):
+    # def BUILD_LIST_UNPACK(self, inst: Instruction):
+    # def BUILD_MAP_UNPACK(self, inst: Instruction):
+    # def BUILD_MAP_UNPACK_WITH_CALL(self, inst: Instruction):
+    # def BUILD_TUPLE_UNPACK(self, inst: Instruction):
+    # def BUILD_SET_UNPACK(self, inst: Instruction):
+
+    # def SETUP_ASYNC_WITH(self, inst: Instruction):
+
+    # def FORMAT_VALUE(self, inst: Instruction):
+    # def BUILD_CONST_KEY_MAP(self, inst: Instruction):
+    # def BUILD_STRING(self, inst: Instruction):
+    # def BUILD_TUPLE_UNPACK_WITH_CALL(self, inst: Instruction):
+    # def LOAD_METHOD(self, inst: Instruction):
+    # def CALL_METHOD(self, inst: Instruction):
+    # def CALL_FINALLY(self, inst: Instruction):
+    def POP_FINALLY(self, inst: Instruction):
+        raise NotImplementedError(f"missing: {inst.opname}")
 
 
 class InlinePyEval(PyEvalBase):
