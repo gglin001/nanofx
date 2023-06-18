@@ -48,7 +48,7 @@ class SymVar:
         return f"SymVar({self.vtype}, {self.id})"
 
     def call(self, tx: PyEvalBase, *args: Any, **kwargs: Any) -> Any:
-        tx.inline_call_function(self, args, kwargs)
+        return tx.inline_call_function(self, args, kwargs)
 
 
 def break_graph_if_unsupported(*, push):
