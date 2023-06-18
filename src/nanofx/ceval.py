@@ -9,6 +9,7 @@ import types
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, NamedTuple
 
+from .bytecode_analysis import livevars_analysis
 from .bytecode_transformation import (
     Instruction,
     cleaned_instructions,
@@ -215,6 +216,12 @@ class PyEvalBase:
 
         self.push(SymVar(var=var))
 
+    def prune_dead_locals(self):
+        reads = livevars_analysis(self.instructions, self.current_instruction)
+        self.symbolic_locals = OrderedDict(
+            [(k, v) for k, v in self.symbolic_locals.items() if k in reads]
+        )
+
     # def POP_TOP(self, inst: Instruction):
     # def ROT_TWO(self, inst: Instruction):
     # def ROT_THREE(self, inst: Instruction):
@@ -287,6 +294,7 @@ class PyEvalBase:
     # def WITH_CLEANUP_FINISH(self, inst: Instruction):
     def RETURN_VALUE(self, inst: Instruction):
         self.should_exit = True
+        self.prune_dead_locals()
         self.output.compile_subgraph(self)
         self.output.add_output_instructions([create_instruction("RETURN_VALUE")])
 

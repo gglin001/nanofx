@@ -10,7 +10,7 @@ from .bytecode_transformation import *  # noqa
 from .paddle_utils import TensorType
 
 if TYPE_CHECKING:
-    from .ceval import SymVar
+    from .ceval import PyEvalBase, SymVar
 
 
 @lru_cache(32)
@@ -26,7 +26,7 @@ def rot_n_helper(n):
 class PyCodegen:
     def __init__(
         self,
-        tx=None,
+        tx: PyEvalBase,
         graph_output_var: str = None,
     ):
         self.tx = tx
@@ -53,9 +53,9 @@ class PyCodegen:
                 graph_outputs[graph_outputs_key] = value
 
             output.append(self.create_load(self.graph_output_var))
-            # TODO: rm hardcode
-            output.append(self.create_load_const(0))
-            output.append(create_instruction("BINARY_SUBSCR"))
+            # TODO: use BINARY_SUBSCR
+            # output.append(self.create_load_const(0))
+            # output.append(create_instruction("BINARY_SUBSCR"))
         else:
             # TODO: support container types
             raise NotImplementedError(f"unsupported type: {type(value)}")
@@ -139,20 +139,12 @@ class PyCodegen:
         ]
 
     def make_call_generated_code(self, fn_name: str):
-        load_function = create_load_global(fn_name, False)
-        self.extend_output([load_function])
+        self.append_output(create_load_global(fn_name, False))
 
         # placeholders = self.tx.output.placeholders
-        # for x in placeholders:
-        #     load_fast = create_instruction(
-        #         "LOAD_FAST",
-        #         argval=x.name,
-        #     )
-        #     self.extend_output([load_fast])
-
-        call_function = create_instruction(
-            "CALL_FUNCTION",
-            # arg=len(placeholders),
-            arg=0,
-        )
-        self.extend_output([call_function])
+        # placeholders = []
+        # TODO: rm hardcode
+        placeholders = ['a', 'b']
+        for x in placeholders:
+            self.append_output(self.create_load(x))
+        self.extend_output(create_call_function(len(placeholders), False))

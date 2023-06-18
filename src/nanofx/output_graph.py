@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import itertools
-import logging
 import types
 
 from typing import TYPE_CHECKING, OrderedDict
 
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
-from .utils import log_instructions
+from .utils import log_code, log_instructions
 
 if TYPE_CHECKING:
     from .ceval import PyEval, SymVar
 
 _output_graph_var_counter = itertools.count()
+
+_compiled_fn_counter = itertools.count()
 
 
 class OutputGraph:
@@ -36,7 +37,18 @@ class OutputGraph:
         self.should_exit = True
 
     def apply_compiler(self, tx: PyEval):
-        pass
+        from .eval_frame import disable
+
+        compiled_fn_name = f"__compiled_fn_{next(_compiled_fn_counter)}"
+        compiled_fn = self.compiler_fn(None, None)
+        log_code(compiled_fn.__code__, "COMPILED_FN")
+        compiled_fn = disable(compiled_fn)
+        tx.f_globals[compiled_fn_name] = compiled_fn
+        self.code_options['co_names'] += (compiled_fn_name,)
+
+        cg = PyCodegen(tx)
+        cg.make_call_generated_code(compiled_fn_name)
+        return cg.instructions
 
     def compile_subgraph(self, tx: PyEval):
         stack_values = list(tx.stack)
@@ -53,12 +65,13 @@ class OutputGraph:
             restore_vars.extend(val_to_names[v])
             stack_values.extend([v] * len(val_to_names[v]))
 
-        graph_output_var = f"____output_{next(_output_graph_var_counter)}"
+        graph_output_var = f"___graph_out_{next(_output_graph_var_counter)}"
+        self.code_options["co_varnames"] += (graph_output_var,)
         cg = PyCodegen(tx, graph_output_var)
         cg.call(stack_values)
 
         output = []
-        # output.extend(self.apply_compiler(tx))
+        output.extend(self.apply_compiler(tx))
 
         if len(cg.graph_outputs) != 0:
             output.append(cg.create_store(graph_output_var))
@@ -70,5 +83,4 @@ class OutputGraph:
             [PyCodegen(tx).create_store(var) for var in reversed(restore_vars)]
         )
 
-        logging.debug(f"compile_subgraph() self.instructions:")
-        log_instructions(self.instructions)
+        log_instructions(self.instructions, 'compile_subgraph()')
