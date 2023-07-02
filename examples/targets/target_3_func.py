@@ -30,16 +30,20 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
     return dummy_print
 
 
-def func(x, y):
-    z = x + y
-    return z
+def func1(a0, b0):
+    c = a0 + b0
+    return c
+
+
+def func0(a, b):
+    c = func1(a, b)
+    return c
 
 
 @nanofx.optimize(my_compiler)
-def add(a, b, c=0):
-    c = a + b
-    d = func(c, c)
-    return d
+def add(x, y):
+    z = func0(x, y)
+    return z
 
 
 in_a = paddle.rand([1])

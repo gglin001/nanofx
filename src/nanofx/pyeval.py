@@ -448,7 +448,7 @@ class InlinePyEval(PyEvalBase):
         # TODO: bind_args()
         bound = inspect.signature(func.var).bind(*args, **kwargs)
         bound.apply_defaults()
-        sub_locals = dict(bound.arguments.items())
+        sub_locals = OrderedDict(bound.arguments.items())
 
         tracer = InlinePyEval(
             parent=parent,
@@ -510,3 +510,8 @@ class PyEval(PyEvalBase):
                     var=frame.f_locals[k],
                     soure=LocalSource(k),
                 )
+
+        # init inputs
+        for k in vars:
+            if k in frame.f_locals:
+                self.output.inputs.append(self.symbolic_locals[k])

@@ -141,10 +141,8 @@ class PyCodegen:
     def make_call_generated_code(self, fn_name: str):
         self.append_output(create_load_global(fn_name, False))
 
-        # placeholders = self.tx.output.placeholders
-        # placeholders = []
+        placeholders = self.tx.output.inputs
         # TODO: rm hardcode
-        placeholders = ['a', 'b']
         for x in placeholders:
-            self.append_output(self.create_load(x))
+            self.append_output(self.create_load(x.soure.local_name))
         self.extend_output(create_call_function(len(placeholders), False))

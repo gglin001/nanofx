@@ -10,11 +10,16 @@ from .codegen import PyCodegen
 from .utils import log_code, log_instructions
 
 if TYPE_CHECKING:
-    from .pyeval import PyEval, SymVar
+    from .pyeval import PyEval, PyEvalBase, SymVar
 
 _output_graph_var_counter = itertools.count()
 
 _compiled_fn_counter = itertools.count()
+
+
+class Tracer:
+    def __init__(self):
+        pass
 
 
 class OutputGraph:
@@ -30,18 +35,20 @@ class OutputGraph:
         self.compiler_fn = compiler_fn
         self.root_tx = root_tx
 
+        self.inputs: list[SymVar] = []
+
         self.should_exit = False
 
     def add_output_instructions(self, insts: list[Instruction]) -> None:
         self.instructions.extend(insts)
         self.should_exit = True
 
-    def apply_compiler(self, tx: PyEval):
+    def apply_compiler(self, tx: PyEvalBase):
         from .eval_frame import disable
 
         compiled_fn_name = f"__compiled_fn_{next(_compiled_fn_counter)}"
         compiled_fn = self.compiler_fn(None, None)
-        log_code(compiled_fn.__code__, "COMPILED_FN")
+        log_code(compiled_fn.__code__, f"COMPILED_FN {compiled_fn_name}")
         compiled_fn = disable(compiled_fn)
         tx.f_globals[compiled_fn_name] = compiled_fn
         self.code_options['co_names'] += (compiled_fn_name,)
@@ -50,7 +57,7 @@ class OutputGraph:
         cg.make_call_generated_code(compiled_fn_name)
         return cg.instructions
 
-    def compile_subgraph(self, tx: PyEval):
+    def compile_subgraph(self, tx: PyEvalBase):
         stack_values = list(tx.stack)
         restore_vars = []
         val_to_names: OrderedDict[SymVar, list[str]] = OrderedDict()
