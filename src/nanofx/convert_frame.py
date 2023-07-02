@@ -7,8 +7,8 @@ import types
 from typing import Any
 
 from .bytecode_transformation import Instruction, transform_code_object
-from .ceval import PyEval
 from .paddle_utils import Tensor, skip_paddle_frame
+from .pyeval import PyEval
 from .utils import log_bytecode, log_code
 
 

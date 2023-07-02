@@ -10,7 +10,7 @@ from .bytecode_transformation import *  # noqa
 from .paddle_utils import TensorType
 
 if TYPE_CHECKING:
-    from .ceval import PyEvalBase, SymVar
+    from .pyeval import PyEvalBase, SymVar
 
 
 @lru_cache(32)

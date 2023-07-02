@@ -10,7 +10,7 @@ from .codegen import PyCodegen
 from .utils import log_code, log_instructions
 
 if TYPE_CHECKING:
-    from .ceval import PyEval, SymVar
+    from .pyeval import PyEval, SymVar
 
 _output_graph_var_counter = itertools.count()
 
