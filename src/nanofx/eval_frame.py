@@ -4,6 +4,8 @@ import functools
 import logging
 import types
 
+from typing import Callable
+
 from ._eval_frame import set_eval_frame
 from .convert_frame import convert_frame
 
