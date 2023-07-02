@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import types
 
-from typing import TYPE_CHECKING, OrderedDict
+from typing import TYPE_CHECKING, Callable, OrderedDict
 
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
@@ -22,7 +22,7 @@ class OutputGraph:
         self,
         frame: types.FrameType,
         code_options: dict,
-        compiler_fn: callable,
+        compiler_fn: Callable,
         root_tx: PyEval,
     ):
         self.instructions: list[Instruction] = []

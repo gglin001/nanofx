@@ -42,8 +42,8 @@ def disable(fn=None):
     return DisableContext()(fn)
 
 
-def optimize(backend: callable):
-    def _fn(backend: callable):
+def optimize(backend: Callable):
+    def _fn(backend: Callable):
         def __fn(frame: types.FrameType):
             try:
                 result = convert_frame(frame, backend)

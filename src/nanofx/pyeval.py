@@ -7,7 +7,7 @@ import operator
 import types
 
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple
 
 from .bytecode_analysis import livevars_analysis
 from .bytecode_transformation import (
@@ -483,7 +483,7 @@ class PyEval(PyEvalBase):
         instructions: list[Instruction],
         frame: types.FrameType,
         code_options: dict,
-        compiler_fn: callable,
+        compiler_fn: Callable,
     ):
         super().__init__(
             instructions=instructions,

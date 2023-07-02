@@ -4,7 +4,7 @@ import dataclasses
 import logging
 import types
 
-from typing import Any
+from typing import Any, Callable
 
 from .bytecode_transformation import Instruction, transform_code_object
 from .paddle_utils import Tensor, skip_paddle_frame
@@ -28,7 +28,7 @@ def skip_frame(frame: types.FrameType) -> bool:
     return True
 
 
-def convert_frame(frame: types.FrameType, compiler_fn: callable) -> Any:
+def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
     if skip_frame(frame):
         return None
 
