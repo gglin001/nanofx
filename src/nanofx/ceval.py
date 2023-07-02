@@ -17,6 +17,7 @@ from .bytecode_transformation import (
     create_jump_absolute,
 )
 from .output_graph import OutputGraph
+from .source import LocalSource, Source
 from .utils import log_code
 
 if TYPE_CHECKING:
@@ -34,10 +35,12 @@ class SymVar:
         var: Any = None,
         vtype: Any = None,
         tx: PyEvalBase = None,
+        soure: Source = None,
     ) -> None:
         self.var = var
         self.vtype = vtype if var is None else type(var)
         self.tx = tx
+        self.soure = soure
 
         self.id = f"id_{next(_sym_var_id_counter)}"
 
@@ -503,4 +506,7 @@ class PyEval(PyEvalBase):
         vars = list(code_options["co_varnames"])
         for k in vars:
             if k in frame.f_locals:
-                self.symbolic_locals[k] = SymVar(var=frame.f_locals[k])
+                self.symbolic_locals[k] = SymVar(
+                    var=frame.f_locals[k],
+                    soure=LocalSource(k),
+                )
