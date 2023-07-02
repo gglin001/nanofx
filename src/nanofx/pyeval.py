@@ -50,11 +50,16 @@ class SymVar:
     def __str__(self) -> str:
         return f"SymVar({self.vtype}, {self.id})"
 
-    def call(self, tx: PyEvalBase, *args: Any, **kwargs: Any) -> Any:
+    def call(self, tx: PyEvalBase, *args, **kwargs) -> Any:
+        if inspect.isbuiltin(self.var):
+            if self.var is print:
+                raise NotImplementedError("print() is not supported")
+
         return tx.inline_call_function(self, args, kwargs)
 
 
-def break_graph_if_unsupported(*, push):
+def break_graph_if_unsupported(*, push: int):
+    # TODO
     pass
 
 
@@ -198,8 +203,8 @@ class PyEvalBase:
     def inline_call_function(
         self,
         fn: SymVar,
-        args: list[SymVar],
-        kwargs: dict[str, SymVar],
+        args,
+        kwargs,
     ):
         state = self.get_state()
         try:
