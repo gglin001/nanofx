@@ -34,8 +34,8 @@ class SymVar:
         *,
         var: Any = None,
         vtype: Any = None,
-        tx: PyEvalBase = None,
-        soure: Source = None,
+        tx: PyEvalBase | None = None,
+        soure: Source | None = None,
     ) -> None:
         self.var = var
         self.vtype = vtype if var is None else type(var)
