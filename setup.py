@@ -29,14 +29,13 @@ def _get_install_requires():
 def _run_cmd(cmd: str, cwd=None):
     p = subprocess.Popen(
         cmd,
-        stdout=subprocess.PIPE,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
         shell=True,
         executable='/bin/bash',
         cwd=cwd,
     )
-    stdout, _ = p.communicate()
-    out = stdout.decode().strip()
-    print(out)
+    p.communicate()
     if p.returncode != 0:
         raise Exception(f'CMD {cmd} failed')
     else:

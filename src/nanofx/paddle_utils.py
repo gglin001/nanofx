@@ -5,6 +5,7 @@ import types
 import paddle
 
 Tensor = paddle.Tensor
+TensorType = type(paddle.Tensor)
 
 
 def skip_paddle_frame(frame: types.FrameType) -> bool:

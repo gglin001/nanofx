@@ -3,6 +3,7 @@ from __future__ import annotations
 import bisect
 import dataclasses
 import dis
+import logging
 import sys
 
 from numbers import Real
@@ -234,7 +235,7 @@ def stacksize_analysis(instructions):
     if False:
         for inst in instructions:
             stack_size = stack_sizes[inst]
-            print(stack_size.low, stack_size.high, inst)
+            logging.debug(stack_size.low, stack_size.high, inst)
 
     low = min([x.low for x in stack_sizes.values()])
     high = max([x.high for x in stack_sizes.values()])

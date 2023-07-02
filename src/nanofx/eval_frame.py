@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import functools
+import logging
 import types
+
+from typing import Callable
 
 from ._eval_frame import set_eval_frame
 from .convert_frame import convert_frame
@@ -41,14 +44,14 @@ def disable(fn=None):
     return DisableContext()(fn)
 
 
-def optimize(backend: callable):
-    def _fn(backend: callable):
+def optimize(backend: Callable):
+    def _fn(backend: Callable):
         def __fn(frame: types.FrameType):
             try:
                 result = convert_frame(frame, backend)
                 return result
             except NotImplementedError as e:
-                print(f"NotImplementedError: {e}")
+                logging.debug(f"!! NotImplementedError: {e}")
             except Exception:
                 raise
             return None
