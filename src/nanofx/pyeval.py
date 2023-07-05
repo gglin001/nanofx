@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import copy
+import dis
+import functools
 import inspect
 import itertools
 import logging
@@ -59,8 +62,41 @@ class SymVar:
 
 
 def break_graph_if_unsupported(*, push: int):
-    # TODO
-    pass
+    def decorator(inner_fn):
+        @functools.wraps(inner_fn)
+        def wrapper(self: PyEval, inst: Instruction):
+            state = self.get_state()
+            try:
+                return inner_fn(self, inst)
+            except NotImplementedError as excp:
+                logging.debug(
+                    f"break_graph_if_unsupported triggered compile", exc_info=True
+                )
+
+            self.set_state(state)
+
+            # compile_subgraph
+            self.output.compile_subgraph(self)
+
+            # copy instruction, but without exception table data
+            assert inst.target is None
+            inst_copy = copy.copy(inst)
+            inst_copy.exn_tab_entry = None
+            self.output.add_output_instructions([inst_copy])
+
+            stack_effect = dis.stack_effect(inst.opcode, inst.arg)
+            self.popn(push - stack_effect)
+            for _ in range(push):
+                self.push(SymVar(var=None))
+
+            # create_call_resume_at
+            self.output.add_output_instructions(
+                self.create_call_resume_at(self.next_instruction)
+            )
+
+        return wrapper
+
+    return decorator
 
 
 class PyEvalState(NamedTuple):
@@ -103,8 +139,8 @@ class PyEvalBase:
         self.symbolic_locals = symbolic_locals
         self.stack = []
         self.instruction_pointer = 0
-        self.current_instruction: Instruction = None
-        self.next_instruction: Instruction = None
+        self.current_instruction: Instruction | None = None
+        self.next_instruction: Instruction | None = None
         self.lineno = code_options["co_firstlineno"]
 
     def get_state(self):
@@ -173,18 +209,6 @@ class PyEvalBase:
 
         self.should_exit = True
         return True
-
-        # from .eval_frame import disable
-        # compiled_fn = self.compiler_fn(None, None)
-        # compiled_fn = disable(compiled_fn)
-        # compiled_fn_name = f"__compiled_fn_{0}"
-        # self.frame.f_globals[compiled_fn_name] = compiled_fn
-        # self.output.code_options['co_names'] += (compiled_fn_name,)
-        # cg = PyCodegen()
-        # cg.make_call_generated_code(compiled_fn_name)
-        # self.output.instructions.extend(cg.get_instructions())
-        # self.output.instructions.append(cg.create_load_const(None))
-        # self.output.instructions.append(cg.create_instruction("RETURN_VALUE"))
 
     def run(self):
         while not self.should_exit and not self.output.should_exit and not self.step():
@@ -367,6 +391,8 @@ class PyEvalBase:
     # def DELETE_FAST(self, inst: Instruction):
 
     # def RAISE_VARARGS(self, inst: Instruction):
+
+    @break_graph_if_unsupported(push=1)
     def CALL_FUNCTION(self, inst: Instruction):
         args = self.popn(inst.argval)
         fn = self.pop()
@@ -520,3 +546,12 @@ class PyEval(PyEvalBase):
         for k in vars:
             if k in frame.f_locals:
                 self.output.inputs.append(self.symbolic_locals[k])
+
+    def create_call_resume_at(self, inst: Instruction) -> list[Instruction]:
+        self.instruction_pointer = -1
+
+        if inst.opname == "RETURN_VALUE":
+            return [create_instruction("RETURN_VALUE")]
+
+        # create new types.FunctionType
+        # self.f_code
