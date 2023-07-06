@@ -105,9 +105,10 @@ class PyCodegen:
     def load_function_name(self, fn_name, push_null, num_on_stack=0):
         """Load the global fn_name on the stack num_on_stack down."""
         output = []
+        self.code_options["co_names"] += (fn_name,)
         output.extend(
             [
-                self.create_load_global(fn_name, False, add=True),
+                self.create_load_global(fn_name, False),
                 *self.rot_n(num_on_stack + 1),
             ]
         )
@@ -120,7 +121,7 @@ class PyCodegen:
             # desired rotate bytecode doesn't exist, generate equivalent bytecode
             return [
                 create_instruction("BUILD_TUPLE", arg=n),
-                self.create_load_output(rot_n_helper(n)),
+                self.create_load_const(rot_n_helper(n)),
                 *create_rot_n(2),
                 create_instruction("CALL_FUNCTION_EX", arg=0),
                 create_instruction("UNPACK_SEQUENCE", arg=n),

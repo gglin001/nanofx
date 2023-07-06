@@ -16,9 +16,12 @@ from .bytecode_analysis import livevars_analysis
 from .bytecode_transformation import (
     Instruction,
     cleaned_instructions,
+    create_call_function,
     create_instruction,
     create_jump_absolute,
+    unique_id,
 )
+from .codegen import PyCodegen
 from .output_graph import OutputGraph
 from .source import LocalSource, Source
 from .utils import log_code
@@ -93,6 +96,9 @@ def break_graph_if_unsupported(*, push: int):
             self.output.add_output_instructions(
                 self.create_call_resume_at(self.next_instruction)
             )
+
+            # debug
+            print(self.output.instructions)
 
         return wrapper
 
@@ -394,6 +400,8 @@ class PyEvalBase:
 
     @break_graph_if_unsupported(push=1)
     def CALL_FUNCTION(self, inst: Instruction):
+        # debug
+        raise NotImplementedError(f"error: {inst.opname}")
         args = self.popn(inst.argval)
         fn = self.pop()
         self.call_function(fn, args, {})
@@ -547,11 +555,40 @@ class PyEval(PyEvalBase):
             if k in frame.f_locals:
                 self.output.inputs.append(self.symbolic_locals[k])
 
-    def create_call_resume_at(self, inst: Instruction) -> list[Instruction]:
+    def create_call_resume_at(self, inst: Instruction | None) -> list[Instruction]:
+        assert inst is not None
         self.instruction_pointer = -1
 
         if inst.opname == "RETURN_VALUE":
             return [create_instruction("RETURN_VALUE")]
 
+        reads = livevars_analysis(self.instructions, inst)
+        argnames = tuple(k for k in self.symbolic_locals.keys() if k in reads)
+
+        cg = PyCodegen(self)
+
+        stack_len = len(self.stack)
+        nargs = stack_len + len(argnames)
+        name = unique_id(f"__resume_at_{inst.offset}")
+
         # create new types.FunctionType
         # self.f_code
+        # new_code: types.CodeType = ContinueExecutionCache.lookup(
+        #     self.f_code,
+        #     self.lineno,
+        #     inst.offset,
+        #     tuple(b.target.offset for b in self.block_stack),
+        #     stack_len,
+        #     argnames,
+        #     tuple(b.resume_fn() for b in self.block_stack),
+        #     tuple(null_idxes),
+        # )
+        new_code = self.f_code
+        self.f_globals[name] = types.FunctionType(new_code, self.f_globals, name)
+
+        cg.extend_output(cg.load_function_name(name, True, stack_len))
+
+        cg.extend_output([cg.create_load(k) for k in argnames])
+        cg.extend_output(create_call_function(nargs, False))
+        cg.append_output(create_instruction("RETURN_VALUE"))
+        return cg.instructions
