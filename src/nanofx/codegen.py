@@ -47,18 +47,20 @@ class PyCodegen:
             output.append(create_dup_top())
             return
 
-        if isinstance(value.vtype, (TensorType,)):
+        if value.vtype == TensorType:
             graph_outputs_key = id(value)
             if graph_outputs_key not in graph_outputs:
                 graph_outputs[graph_outputs_key] = value
 
             output.append(self.create_load(self.graph_output_var))
             # TODO: use BINARY_SUBSCR
-            # output.append(self.create_load_const(0))
-            # output.append(create_instruction("BINARY_SUBSCR"))
+            output.append(self.create_load_const(0))
+            output.append(create_instruction("BINARY_SUBSCR"))
+        elif value.vtype == types.FunctionType:
+            output.append(self.create_load_global(value.var.__name__, False))
         else:
             # TODO: support container types
-            raise NotImplementedError(f"unsupported type: {type(value)}")
+            raise ValueError(f"unsupported type: {value.vtype}")
 
         self.top_of_stack = value
 

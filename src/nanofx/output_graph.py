@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Callable, OrderedDict
 
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
-from .utils import log_code, log_instructions
 
 if TYPE_CHECKING:
     from .pyeval import PyEval, PyEvalBase, SymVar
@@ -48,7 +47,7 @@ class OutputGraph:
 
         compiled_fn_name = f"__compiled_fn_{next(_compiled_fn_counter)}"
         compiled_fn = self.compiler_fn(None, None)
-        log_code(compiled_fn.__code__, f"COMPILED_FN {compiled_fn_name}")
+        # log_code(compiled_fn.__code__, f"COMPILED_FN {compiled_fn_name}")
         compiled_fn = disable(compiled_fn)
         tx.f_globals[compiled_fn_name] = compiled_fn
         self.code_options['co_names'] += (compiled_fn_name,)
@@ -58,6 +57,8 @@ class OutputGraph:
         return cg.instructions
 
     def compile_subgraph(self, tx: PyEvalBase):
+        tx.prune_dead_locals()
+
         stack_values = list(tx.stack)
         restore_vars = []
         val_to_names: OrderedDict[SymVar, list[str]] = OrderedDict()
@@ -90,4 +91,4 @@ class OutputGraph:
             [PyCodegen(tx).create_store(var) for var in reversed(restore_vars)]
         )
 
-        log_instructions(self.instructions, 'compile_subgraph()')
+        # log_instructions(self.instructions, 'compile_subgraph()')

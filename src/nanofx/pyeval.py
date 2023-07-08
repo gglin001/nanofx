@@ -97,9 +97,6 @@ def break_graph_if_unsupported(*, push: int):
                 self.create_call_resume_at(self.next_instruction)
             )
 
-            # debug
-            print(self.output.instructions)
-
         return wrapper
 
     return decorator
