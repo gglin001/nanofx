@@ -19,6 +19,7 @@ from .bytecode_transformation import (
     create_call_function,
     create_instruction,
     create_jump_absolute,
+    transform_code_object,
     unique_id,
 )
 from .codegen import PyCodegen
@@ -92,7 +93,6 @@ def break_graph_if_unsupported(*, push: int):
             for _ in range(push):
                 self.push(SymVar(var=None))
 
-            # create_call_resume_at
             self.output.add_output_instructions(
                 self.create_call_resume_at(self.next_instruction)
             )
@@ -349,7 +349,9 @@ class PyEvalBase:
     # def DELETE_ATTR(self, inst: Instruction):
     # def STORE_GLOBAL(self, inst: Instruction):
     # def DELETE_GLOBAL(self, inst: Instruction):
-    # def LOAD_CONST(self, inst: Instruction):
+
+    def LOAD_CONST(self, inst: Instruction):
+        self.push(SymVar(var=inst.argval))
 
     # def LOAD_NAME(self, inst: Instruction):
     # def BUILD_TUPLE(self, inst: Instruction):
@@ -568,7 +570,7 @@ class PyEval(PyEvalBase):
         nargs = stack_len + len(argnames)
         name = unique_id(f"__resume_at_{inst.offset}")
 
-        # create new types.FunctionType
+        # TODO: clean it
         # self.f_code
         # new_code: types.CodeType = ContinueExecutionCache.lookup(
         #     self.f_code,
@@ -580,7 +582,37 @@ class PyEval(PyEvalBase):
         #     tuple(b.resume_fn() for b in self.block_stack),
         #     tuple(null_idxes),
         # )
-        new_code = self.f_code
+        # new_code = self.f_code
+
+        def update(instructions: list[Instruction], code_options: dict):
+            prefix = []
+            code_options_update = {}
+
+            args = [f"___stack{i}" for i in range(stack_len)]
+            args.extend(v for v in argnames if v not in args)
+
+            code_options_update["co_varnames"] = tuple(
+                args + [v for v in code_options["co_varnames"] if v not in args]
+            )
+
+            nonlocal inst
+            target = next(i for i in instructions if i.offset == inst.offset)
+
+            for i in range(stack_len):
+                prefix.append(create_instruction("LOAD_FAST", argval=f"___stack{i}"))
+            prefix.append(create_jump_absolute(target))
+
+            for inst in instructions:
+                if inst.offset == target.offset:
+                    break
+                inst.starts_line = None
+
+            code_options.update(code_options_update)
+            instructions[:] = prefix + instructions
+
+        new_code = transform_code_object(self.f_code, update)
+        log_code(new_code, "create_call_resume_at(), NEW CODE")
+
         self.f_globals[name] = types.FunctionType(new_code, self.f_globals, name)
 
         cg.extend_output(cg.load_function_name(name, True, stack_len))

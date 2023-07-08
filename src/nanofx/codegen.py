@@ -58,6 +58,8 @@ class PyCodegen:
             output.append(create_instruction("BINARY_SUBSCR"))
         elif value.vtype == types.FunctionType:
             output.append(self.create_load_global(value.var.__name__, False))
+        elif value.vtype == None:
+            output.append(self.create_load_const(None))
         else:
             # TODO: support container types
             raise ValueError(f"unsupported type: {value.vtype}")

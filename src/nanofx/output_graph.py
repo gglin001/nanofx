@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, OrderedDict
 
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
+from .utils import log_code
 
 if TYPE_CHECKING:
     from .pyeval import PyEval, PyEvalBase, SymVar
@@ -47,7 +48,7 @@ class OutputGraph:
 
         compiled_fn_name = f"__compiled_fn_{next(_compiled_fn_counter)}"
         compiled_fn = self.compiler_fn(None, None)
-        # log_code(compiled_fn.__code__, f"COMPILED_FN {compiled_fn_name}")
+        log_code(compiled_fn.__code__, f"COMPILED_FN {compiled_fn_name}")
         compiled_fn = disable(compiled_fn)
         tx.f_globals[compiled_fn_name] = compiled_fn
         self.code_options['co_names'] += (compiled_fn_name,)
