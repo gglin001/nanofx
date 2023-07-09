@@ -257,7 +257,9 @@ class PyEvalBase:
             [(k, v) for k, v in self.symbolic_locals.items() if k in reads]
         )
 
-    # def POP_TOP(self, inst: Instruction):
+    def POP_TOP(self, inst: Instruction):
+        self.pop()
+
     # def ROT_TWO(self, inst: Instruction):
     # def ROT_THREE(self, inst: Instruction):
     # def DUP_TOP(self, inst: Instruction):
@@ -287,7 +289,14 @@ class PyEvalBase:
         assert type(args[0]) == type(args[1])
         self.push(SymVar(vtype=args[0].vtype))
 
-    # def BINARY_SUBTRACT(self, inst: Instruction):
+    def BINARY_SUBTRACT(self, inst: Instruction):
+        fn = operator.sub
+
+        nargs = len(inspect.signature(fn).parameters)
+        args = self.popn(nargs)
+        assert type(args[0]) == type(args[1])
+        self.push(SymVar(vtype=args[0].vtype))
+
     # def BINARY_SUBSCR(self, inst: Instruction):
     # def BINARY_FLOOR_DIVIDE(self, inst: Instruction):
     # def BINARY_TRUE_DIVIDE(self, inst: Instruction):
@@ -367,7 +376,14 @@ class PyEvalBase:
     # def JUMP_FORWARD(self, inst: Instruction):
     # def JUMP_IF_FALSE_OR_POP(self, inst: Instruction):
     # def JUMP_IF_TRUE_OR_POP(self, inst: Instruction):
-    # def JUMP_ABSOLUTE(self, inst: Instruction):
+
+    def JUMP_ABSOLUTE(self, inst: Instruction):
+        for i, ins in enumerate(self.instructions):
+            if inst.target.offset == ins.offset:
+                self.instruction_pointer = i
+                return
+        raise Exception("JUMP_ABSOLUTE error")
+
     # def POP_JUMP_IF_FALSE(self, inst: Instruction):
     # def POP_JUMP_IF_TRUE(self, inst: Instruction):
 
