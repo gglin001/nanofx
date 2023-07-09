@@ -497,7 +497,7 @@ class InlinePyEval(PyEvalBase):
             raise NotImplementedError(f"inline_call {code.co_name}")
 
         logging.debug(f"INLINING {code}")
-        log_code(code, "INLINE CODE")
+        log_code(code, "INLINE CODE", log_fn=logging.debug)
 
         # TODO: bind_args()
         bound = inspect.signature(func.var).bind(*args, **kwargs)

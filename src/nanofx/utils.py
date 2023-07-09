@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 def format_bytecode(prefix, name, filename, line_no, code):
-    return f"{prefix} {name} {filename} line {line_no} \n{dis.Bytecode(code).dis()}\n"
+    return f"{prefix} {name} {filename} line {line_no} \n{dis.Bytecode(code).dis()}"
 
 
 def log_bytecode(prefix, name, filename, line_no, code, log_fn=logging.info):
