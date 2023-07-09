@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import copy
+import dis
+import functools
 import inspect
 import itertools
 import logging
@@ -13,9 +16,13 @@ from .bytecode_analysis import livevars_analysis
 from .bytecode_transformation import (
     Instruction,
     cleaned_instructions,
+    create_call_function,
     create_instruction,
     create_jump_absolute,
+    transform_code_object,
+    unique_id,
 )
+from .codegen import PyCodegen
 from .output_graph import OutputGraph
 from .source import LocalSource, Source
 from .utils import log_code
@@ -35,12 +42,12 @@ class SymVar:
         var: Any = None,
         vtype: Any = None,
         tx: PyEvalBase | None = None,
-        soure: Source | None = None,
+        source: Source | None = None,
     ) -> None:
         self.var = var
         self.vtype = vtype if var is None else type(var)
         self.tx = tx
-        self.soure = soure
+        self.source = source
 
         self.id = f"id_{next(_sym_var_id_counter)}"
 
@@ -50,12 +57,52 @@ class SymVar:
     def __str__(self) -> str:
         return f"SymVar({self.vtype}, {self.id})"
 
-    def call(self, tx: PyEvalBase, *args: Any, **kwargs: Any) -> Any:
+    def call(self, tx: PyEvalBase, *args, **kwargs) -> Any:
+        if inspect.isbuiltin(self.var):
+            if self.var is print:
+                raise NotImplementedError("print() is not supported")
+
         return tx.inline_call_function(self, args, kwargs)
 
 
-def break_graph_if_unsupported(*, push):
-    pass
+def break_graph_if_unsupported(*, push: int):
+    def decorator(inner_fn):
+        @functools.wraps(inner_fn)
+        def wrapper(self: PyEval, inst: Instruction):
+            state = self.get_state()
+            try:
+                return inner_fn(self, inst)
+            except NotImplementedError as excp:
+                logging.debug(
+                    f"break_graph_if_unsupported triggered compile", exc_info=True
+                )
+
+                if isinstance(self, InlinePyEval):
+                    raise
+
+            self.set_state(state)
+
+            # compile_subgraph
+            self.output.compile_subgraph(self)
+
+            # copy instruction, but without exception table data
+            assert inst.target is None
+            inst_copy = copy.copy(inst)
+            inst_copy.exn_tab_entry = None
+            self.output.add_output_instructions([inst_copy])
+
+            stack_effect = dis.stack_effect(inst.opcode, inst.arg)
+            self.popn(push - stack_effect)
+            for _ in range(push):
+                self.push(SymVar(var=None))
+
+            self.output.add_output_instructions(
+                self.create_call_resume_at(self.next_instruction)
+            )
+
+        return wrapper
+
+    return decorator
 
 
 class PyEvalState(NamedTuple):
@@ -78,7 +125,7 @@ class PyEvalBase:
         f_locals: dict[str, Any],
         f_globals: dict[str, Any],
         f_builtins: dict[str, Any],
-        symbolic_locals: OrderedDict[str, Any],
+        symbolic_locals: OrderedDict[str, SymVar],
         symbolic_globals: OrderedDict[str, Any],
         output: OutputGraph,
     ):
@@ -98,15 +145,15 @@ class PyEvalBase:
         self.symbolic_locals = symbolic_locals
         self.stack = []
         self.instruction_pointer = 0
-        self.current_instruction: Instruction = None
-        self.next_instruction: Instruction = None
+        self.current_instruction: Instruction | None = None
+        self.next_instruction: Instruction | None = None
         self.lineno = code_options["co_firstlineno"]
 
     def get_state(self):
         return PyEvalState(
             # self.output.get_state(),
-            self.symbolic_locals,
-            self.stack,
+            copy.copy(self.symbolic_locals),
+            copy.copy(self.stack),
             self.instruction_pointer,
             self.current_instruction,
             self.next_instruction,
@@ -138,7 +185,7 @@ class PyEvalBase:
             self.lineno = inst.starts_line
             logging.debug(f"TRACE starts_line {self.f_code.co_filename}:{self.lineno}")
 
-        if len(self.stack) == 0:
+        if len(self.stack) == 0 and not isinstance(self, InlinePyEval):
             self.checkpoint = inst, self.get_state()
 
         logging.debug(f"TRACE {inst.opname} {inst.argval} {self.stack}")
@@ -151,6 +198,8 @@ class PyEvalBase:
             # return True if should exit
             return inst.opname == "RETURN_VALUE"
         except NotImplementedError as e:
+            if self.checkpoint is None:
+                raise
             logging.debug(f"!! NotImplementedError: {e}")
         except Exception:
             raise
@@ -169,18 +218,6 @@ class PyEvalBase:
         self.should_exit = True
         return True
 
-        # from .eval_frame import disable
-        # compiled_fn = self.compiler_fn(None, None)
-        # compiled_fn = disable(compiled_fn)
-        # compiled_fn_name = f"__compiled_fn_{0}"
-        # self.frame.f_globals[compiled_fn_name] = compiled_fn
-        # self.output.code_options['co_names'] += (compiled_fn_name,)
-        # cg = PyCodegen()
-        # cg.make_call_generated_code(compiled_fn_name)
-        # self.output.instructions.extend(cg.get_instructions())
-        # self.output.instructions.append(cg.create_load_const(None))
-        # self.output.instructions.append(cg.create_instruction("RETURN_VALUE"))
-
     def run(self):
         while not self.should_exit and not self.output.should_exit and not self.step():
             pass
@@ -198,8 +235,8 @@ class PyEvalBase:
     def inline_call_function(
         self,
         fn: SymVar,
-        args: list[SymVar],
-        kwargs: dict[str, SymVar],
+        args,
+        kwargs,
     ):
         state = self.get_state()
         try:
@@ -217,7 +254,7 @@ class PyEvalBase:
     ):
         var = fn.call(self, *args, **kwargs)
 
-        self.push(SymVar(var=var))
+        self.push(var)
 
     def prune_dead_locals(self):
         reads = livevars_analysis(self.instructions, self.current_instruction)
@@ -225,7 +262,9 @@ class PyEvalBase:
             [(k, v) for k, v in self.symbolic_locals.items() if k in reads]
         )
 
-    # def POP_TOP(self, inst: Instruction):
+    def POP_TOP(self, inst: Instruction):
+        self.pop()
+
     # def ROT_TWO(self, inst: Instruction):
     # def ROT_THREE(self, inst: Instruction):
     # def DUP_TOP(self, inst: Instruction):
@@ -255,7 +294,14 @@ class PyEvalBase:
         assert type(args[0]) == type(args[1])
         self.push(SymVar(vtype=args[0].vtype))
 
-    # def BINARY_SUBTRACT(self, inst: Instruction):
+    def BINARY_SUBTRACT(self, inst: Instruction):
+        fn = operator.sub
+
+        nargs = len(inspect.signature(fn).parameters)
+        args = self.popn(nargs)
+        assert type(args[0]) == type(args[1])
+        self.push(SymVar(vtype=args[0].vtype))
+
     # def BINARY_SUBSCR(self, inst: Instruction):
     # def BINARY_FLOOR_DIVIDE(self, inst: Instruction):
     # def BINARY_TRUE_DIVIDE(self, inst: Instruction):
@@ -317,7 +363,9 @@ class PyEvalBase:
     # def DELETE_ATTR(self, inst: Instruction):
     # def STORE_GLOBAL(self, inst: Instruction):
     # def DELETE_GLOBAL(self, inst: Instruction):
-    # def LOAD_CONST(self, inst: Instruction):
+
+    def LOAD_CONST(self, inst: Instruction):
+        self.push(SymVar(var=inst.argval))
 
     # def LOAD_NAME(self, inst: Instruction):
     # def BUILD_TUPLE(self, inst: Instruction):
@@ -333,7 +381,14 @@ class PyEvalBase:
     # def JUMP_FORWARD(self, inst: Instruction):
     # def JUMP_IF_FALSE_OR_POP(self, inst: Instruction):
     # def JUMP_IF_TRUE_OR_POP(self, inst: Instruction):
-    # def JUMP_ABSOLUTE(self, inst: Instruction):
+
+    def JUMP_ABSOLUTE(self, inst: Instruction):
+        for i, ins in enumerate(self.instructions):
+            if inst.target.offset == ins.offset:
+                self.instruction_pointer = i
+                return
+        raise Exception("JUMP_ABSOLUTE error")
+
     # def POP_JUMP_IF_FALSE(self, inst: Instruction):
     # def POP_JUMP_IF_TRUE(self, inst: Instruction):
 
@@ -362,6 +417,8 @@ class PyEvalBase:
     # def DELETE_FAST(self, inst: Instruction):
 
     # def RAISE_VARARGS(self, inst: Instruction):
+
+    @break_graph_if_unsupported(push=1)
     def CALL_FUNCTION(self, inst: Instruction):
         args = self.popn(inst.argval)
         fn = self.pop()
@@ -414,13 +471,17 @@ class InlinePyEval(PyEvalBase):
         func: SymVar,
     ):
         f_globals = func.var.__globals__
+        f_builtins = f_globals['__builtins__']
+        if not isinstance(f_builtins, dict):
+            f_builtins = f_builtins.__dict__
+
         super().__init__(
             instructions=cleaned_instructions(code),
             code_options={k: getattr(code, k) for k in dir(code)},
             f_code=code,
             f_locals={},
             f_globals=f_globals,
-            f_builtins=f_globals['__builtins__'],
+            f_builtins=f_builtins,
             symbolic_locals=symbolic_locals,
             symbolic_globals=symbolic_globals,
             output=parent.output,
@@ -443,12 +504,12 @@ class InlinePyEval(PyEvalBase):
             raise NotImplementedError(f"inline_call {code.co_name}")
 
         logging.debug(f"INLINING {code}")
-        log_code(code, "INLINE CODE")
+        log_code(code, "INLINE CODE", log_fn=logging.debug)
 
         # TODO: bind_args()
         bound = inspect.signature(func.var).bind(*args, **kwargs)
         bound.apply_defaults()
-        sub_locals = dict(bound.arguments.items())
+        sub_locals = OrderedDict(bound.arguments.items())
 
         tracer = InlinePyEval(
             parent=parent,
@@ -508,5 +569,66 @@ class PyEval(PyEvalBase):
             if k in frame.f_locals:
                 self.symbolic_locals[k] = SymVar(
                     var=frame.f_locals[k],
-                    soure=LocalSource(k),
+                    source=LocalSource(k),
                 )
+
+        # init inputs
+        for k in vars:
+            if k in frame.f_locals:
+                if not k.startswith("___stack"):
+                    self.output.inputs.append(self.symbolic_locals[k])
+
+    def create_call_resume_at(self, inst: Instruction | None) -> list[Instruction]:
+        assert inst is not None
+        self.instruction_pointer = -1
+
+        if inst.opname == "RETURN_VALUE":
+            return [create_instruction("RETURN_VALUE")]
+
+        reads = livevars_analysis(self.instructions, inst)
+        argnames = tuple(k for k in self.symbolic_locals.keys() if k in reads)
+
+        cg = PyCodegen(self)
+
+        stack_len = len(self.stack)
+        nargs = stack_len + len(argnames)
+        name = unique_id(f"__resume_at_{inst.offset}")
+
+        def update(instructions: list[Instruction], code_options: dict):
+            prefix = []
+            code_options_update = {}
+
+            args = [f"___stack{i}" for i in range(stack_len)]
+            args.extend(v for v in argnames if v not in args)
+
+            code_options_update["co_argcount"] = len(args)
+            code_options_update["co_varnames"] = tuple(
+                args + [v for v in code_options["co_varnames"] if v not in args]
+            )
+
+            nonlocal inst
+            target = next(i for i in instructions if i.offset == inst.offset)
+
+            for i in range(stack_len):
+                prefix.append(create_instruction("LOAD_FAST", argval=f"___stack{i}"))
+            prefix.append(create_jump_absolute(target))
+
+            for inst in instructions:
+                if inst.offset == target.offset:
+                    break
+                inst.starts_line = None
+
+            code_options.update(code_options_update)
+            instructions[:] = prefix + instructions
+
+        new_code = transform_code_object(self.f_code, update)
+        log_code(new_code, f"RESUME_AT {name}", log_fn=logging.debug)
+
+        self.f_globals[name] = types.FunctionType(new_code, self.f_globals, name)
+
+        cg.extend_output(cg.load_function_name(name, True, stack_len))
+
+        cg.extend_output([cg.create_load(k) for k in argnames])
+        cg.extend_output(create_call_function(nargs, False))
+        cg.append_output(create_instruction("RETURN_VALUE"))
+        return cg.instructions

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from .bytecode_transformation import *  # noqa
 from .paddle_utils import TensorType
+from .source import LocalSource
 
 if TYPE_CHECKING:
     from .pyeval import PyEvalBase, SymVar
@@ -47,18 +48,32 @@ class PyCodegen:
             output.append(create_dup_top())
             return
 
-        if isinstance(value.vtype, (TensorType,)):
+        if value.source is not None:
+            if isinstance(value.source, LocalSource):
+                output.append(self.create_load(value.source.local_name))
+            else:
+                raise Exception(f"unsupported source: {value.source}")
+        elif value.vtype == TensorType:
             graph_outputs_key = id(value)
             if graph_outputs_key not in graph_outputs:
                 graph_outputs[graph_outputs_key] = value
 
             output.append(self.create_load(self.graph_output_var))
-            # TODO: use BINARY_SUBSCR
-            # output.append(self.create_load_const(0))
-            # output.append(create_instruction("BINARY_SUBSCR"))
+            # TODO: rm hardcode
+            output.append(self.create_load_const(0))
+            output.append(create_instruction("BINARY_SUBSCR"))
+        elif value.vtype == None:
+            output.append(self.create_load_const(None))
+        elif value.vtype == types.FunctionType:
+            output.append(self.create_load_global(value.var.__name__, False))
+        elif value.vtype == types.BuiltinFunctionType:
+            if value.var == print:
+                output.append(self.create_load_global(value.var.__name__, False))
+        elif value.vtype == str:
+            output.append(self.create_load_const(value.var))
         else:
             # TODO: support container types
-            raise NotImplementedError(f"unsupported type: {type(value)}")
+            raise ValueError(f"unsupported type: {value.vtype}")
 
         self.top_of_stack = value
 
@@ -88,7 +103,9 @@ class PyCodegen:
         return create_instruction("STORE_FAST", argval=name)
 
     def create_load_global(self, name, push_null):
-        assert name in self.code_options["co_names"], f"{name} not in co_names"
+        if name not in self.code_options["co_names"]:
+            self.code_options["co_names"] += (name,)
+        # assert name in self.code_options["co_names"], f"{name} not in co_names"
         return create_load_global(name, push_null)
 
     def create_load_const(self, value):
@@ -105,9 +122,10 @@ class PyCodegen:
     def load_function_name(self, fn_name, push_null, num_on_stack=0):
         """Load the global fn_name on the stack num_on_stack down."""
         output = []
+        self.code_options["co_names"] += (fn_name,)
         output.extend(
             [
-                self.create_load_global(fn_name, False, add=True),
+                self.create_load_global(fn_name, False),
                 *self.rot_n(num_on_stack + 1),
             ]
         )
@@ -120,7 +138,7 @@ class PyCodegen:
             # desired rotate bytecode doesn't exist, generate equivalent bytecode
             return [
                 create_instruction("BUILD_TUPLE", arg=n),
-                self.create_load_output(rot_n_helper(n)),
+                self.create_load_const(rot_n_helper(n)),
                 *create_rot_n(2),
                 create_instruction("CALL_FUNCTION_EX", arg=0),
                 create_instruction("UNPACK_SEQUENCE", arg=n),
@@ -141,10 +159,8 @@ class PyCodegen:
     def make_call_generated_code(self, fn_name: str):
         self.append_output(create_load_global(fn_name, False))
 
-        # placeholders = self.tx.output.placeholders
-        # placeholders = []
+        placeholders = self.tx.output.inputs
         # TODO: rm hardcode
-        placeholders = ['a', 'b']
         for x in placeholders:
-            self.append_output(self.create_load(x))
+            self.append_output(self.create_load(x.source.local_name))
         self.extend_output(create_call_function(len(placeholders), False))

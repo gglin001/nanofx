@@ -10,7 +10,6 @@ import paddle
 import paddle.nn
 
 import nanofx
-import nanofx.utils
 
 # logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -25,28 +24,27 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
     # dummy_print
     def dummy_print(*args, **kwargs):
         print("==== dummy_print: ")
-        return (args[0],)
+        # return args[0]
+        # return (args[0],)
+        return (10,)
 
     return dummy_print
 
 
+@nanofx.optimize(my_compiler)
 def func(x, y):
     z = x + y
-    return z
-
-
-@nanofx.optimize(my_compiler)
-def add(a, b):
-    d = func(a, b)
-    return d
+    print("zzzz")
+    # zz = z - z
+    zz = x - y
+    return zz
 
 
 in_a = paddle.rand([1])
 in_b = paddle.rand([1])
-res = add(in_a, in_b)
+
+res = func(in_a, in_b)
 
 # print("in_a = ", in_a)
 # print("in_b = ", in_b)
 print("res = ", res)
-
-# nanofx.utils.log_code(add.__code__, "add.__code__")
