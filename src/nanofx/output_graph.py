@@ -65,6 +65,7 @@ class OutputGraph:
 
     def compile_subgraph(self, tx: PyEvalBase):
         tx.prune_dead_locals()
+        # debug
         # tx.symbolic_locals = {'z': tx.symbolic_locals['z']}
         # tx.symbolic_locals = tx.symbolic_locals
 
