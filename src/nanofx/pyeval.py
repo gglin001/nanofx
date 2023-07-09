@@ -249,7 +249,7 @@ class PyEvalBase:
     ):
         var = fn.call(self, *args, **kwargs)
 
-        self.push(SymVar(var=var))
+        self.push(var)
 
     def prune_dead_locals(self):
         reads = livevars_analysis(self.instructions, self.current_instruction)
