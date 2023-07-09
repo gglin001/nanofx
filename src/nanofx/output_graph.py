@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Callable, OrderedDict
 
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
+from .source import LocalSource
 from .utils import log_code
 
 if TYPE_CHECKING:
@@ -67,6 +68,8 @@ class OutputGraph:
             val_to_names[stack_values[-1]] = list()
 
         for k, v in tx.symbolic_locals.items():
+            if isinstance(v.source, LocalSource) and v.source.local_name == k:
+                continue
             if v not in val_to_names:
                 val_to_names[v] = list()
             val_to_names[v].append(k)

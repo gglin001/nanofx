@@ -42,12 +42,12 @@ class SymVar:
         var: Any = None,
         vtype: Any = None,
         tx: PyEvalBase | None = None,
-        soure: Source | None = None,
+        source: Source | None = None,
     ) -> None:
         self.var = var
         self.vtype = vtype if var is None else type(var)
         self.tx = tx
-        self.soure = soure
+        self.source = source
 
         self.id = f"id_{next(_sym_var_id_counter)}"
 
@@ -122,7 +122,7 @@ class PyEvalBase:
         f_locals: dict[str, Any],
         f_globals: dict[str, Any],
         f_builtins: dict[str, Any],
-        symbolic_locals: OrderedDict[str, Any],
+        symbolic_locals: OrderedDict[str, SymVar],
         symbolic_globals: OrderedDict[str, Any],
         output: OutputGraph,
     ):
@@ -149,8 +149,8 @@ class PyEvalBase:
     def get_state(self):
         return PyEvalState(
             # self.output.get_state(),
-            self.symbolic_locals,
-            self.stack,
+            copy.copy(self.symbolic_locals),
+            copy.copy(self.stack),
             self.instruction_pointer,
             self.current_instruction,
             self.next_instruction,
@@ -400,7 +400,7 @@ class PyEvalBase:
     @break_graph_if_unsupported(push=1)
     def CALL_FUNCTION(self, inst: Instruction):
         # debug
-        raise NotImplementedError(f"error: {inst.opname}")
+        # raise NotImplementedError(f"error: {inst.opname}")
         args = self.popn(inst.argval)
         fn = self.pop()
         self.call_function(fn, args, {})
@@ -546,7 +546,7 @@ class PyEval(PyEvalBase):
             if k in frame.f_locals:
                 self.symbolic_locals[k] = SymVar(
                     var=frame.f_locals[k],
-                    soure=LocalSource(k),
+                    source=LocalSource(k),
                 )
 
         # init inputs

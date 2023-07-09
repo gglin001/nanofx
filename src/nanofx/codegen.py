@@ -62,7 +62,9 @@ class PyCodegen:
             output.append(self.create_load_global(value.var.__name__, False))
         elif value.vtype == types.BuiltinFunctionType:
             if value.var == print:
-                raise NotImplementedError("print() not supported")
+                output.append(self.create_load_global(value.var.__name__, False))
+        elif value.vtype == str:
+            output.append(self.create_load_const(value.var))
         else:
             # TODO: support container types
             raise ValueError(f"unsupported type: {value.vtype}")
@@ -152,5 +154,5 @@ class PyCodegen:
         placeholders = self.tx.output.inputs
         # TODO: rm hardcode
         for x in placeholders:
-            self.append_output(self.create_load(x.soure.local_name))
+            self.append_output(self.create_load(x.source.local_name))
         self.extend_output(create_call_function(len(placeholders), False))
