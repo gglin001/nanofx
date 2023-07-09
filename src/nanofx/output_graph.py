@@ -91,12 +91,15 @@ class OutputGraph:
         cg.call(stack_values)
 
         output = []
-        output.extend(self.apply_compiler(tx))
 
         if len(cg.graph_outputs) != 0:
-            output.append(cg.create_store(graph_output_var))
-        else:
-            output.append(create_instruction("POP_TOP"))
+            output.extend(self.apply_compiler(tx))
+
+            if len(cg.graph_outputs) != 0:
+                output.append(cg.create_store(graph_output_var))
+            else:
+                output.append(create_instruction("POP_TOP"))
+
         self.add_output_instructions(output + cg.instructions)
 
         self.add_output_instructions(

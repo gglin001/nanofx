@@ -77,6 +77,9 @@ def break_graph_if_unsupported(*, push: int):
                     f"break_graph_if_unsupported triggered compile", exc_info=True
                 )
 
+                if isinstance(self, InlinePyEval):
+                    raise
+
             self.set_state(state)
 
             # compile_subgraph
@@ -182,7 +185,7 @@ class PyEvalBase:
             self.lineno = inst.starts_line
             logging.debug(f"TRACE starts_line {self.f_code.co_filename}:{self.lineno}")
 
-        if len(self.stack) == 0:
+        if len(self.stack) == 0 and not isinstance(self, InlinePyEval):
             self.checkpoint = inst, self.get_state()
 
         logging.debug(f"TRACE {inst.opname} {inst.argval} {self.stack}")
@@ -195,6 +198,8 @@ class PyEvalBase:
             # return True if should exit
             return inst.opname == "RETURN_VALUE"
         except NotImplementedError as e:
+            if self.checkpoint is None:
+                raise
             logging.debug(f"!! NotImplementedError: {e}")
         except Exception:
             raise
@@ -468,13 +473,17 @@ class InlinePyEval(PyEvalBase):
         func: SymVar,
     ):
         f_globals = func.var.__globals__
+        f_builtins = f_globals['__builtins__']
+        if not isinstance(f_builtins, dict):
+            f_builtins = f_builtins.__dict__
+
         super().__init__(
             instructions=cleaned_instructions(code),
             code_options={k: getattr(code, k) for k in dir(code)},
             f_code=code,
             f_locals={},
             f_globals=f_globals,
-            f_builtins=f_globals['__builtins__'],
+            f_builtins=f_builtins,
             symbolic_locals=symbolic_locals,
             symbolic_globals=symbolic_globals,
             output=parent.output,
