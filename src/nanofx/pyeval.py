@@ -420,8 +420,6 @@ class PyEvalBase:
 
     @break_graph_if_unsupported(push=1)
     def CALL_FUNCTION(self, inst: Instruction):
-        # debug
-        # raise NotImplementedError(f"error: {inst.opname}")
         args = self.popn(inst.argval)
         fn = self.pop()
         self.call_function(fn, args, {})
@@ -595,20 +593,6 @@ class PyEval(PyEvalBase):
         stack_len = len(self.stack)
         nargs = stack_len + len(argnames)
         name = unique_id(f"__resume_at_{inst.offset}")
-
-        # TODO: clean it
-        # self.f_code
-        # new_code: types.CodeType = ContinueExecutionCache.lookup(
-        #     self.f_code,
-        #     self.lineno,
-        #     inst.offset,
-        #     tuple(b.target.offset for b in self.block_stack),
-        #     stack_len,
-        #     argnames,
-        #     tuple(b.resume_fn() for b in self.block_stack),
-        #     tuple(null_idxes),
-        # )
-        # new_code = self.f_code
 
         def update(instructions: list[Instruction], code_options: dict):
             prefix = []
