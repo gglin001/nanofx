@@ -577,7 +577,8 @@ class PyEval(PyEvalBase):
         # init inputs
         for k in vars:
             if k in frame.f_locals:
-                self.output.inputs.append(self.symbolic_locals[k])
+                if not k.startswith("___stack"):
+                    self.output.inputs.append(self.symbolic_locals[k])
 
     def create_call_resume_at(self, inst: Instruction | None) -> list[Instruction]:
         assert inst is not None
