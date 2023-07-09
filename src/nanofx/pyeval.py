@@ -628,7 +628,7 @@ class PyEval(PyEvalBase):
             instructions[:] = prefix + instructions
 
         new_code = transform_code_object(self.f_code, update)
-        log_code(new_code, f"{name}")
+        log_code(new_code, f"RESUME_AT {name}", log_fn=logging.debug)
 
         self.f_globals[name] = types.FunctionType(new_code, self.f_globals, name)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import logging
 import types
 
 from typing import TYPE_CHECKING, Callable, OrderedDict
@@ -8,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, OrderedDict
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
 from .source import LocalSource
-from .utils import log_code
+from .utils import log_code, log_instructions
 
 if TYPE_CHECKING:
     from .pyeval import PyEval, PyEvalBase, SymVar
@@ -49,7 +50,11 @@ class OutputGraph:
 
         compiled_fn_name = f"__compiled_fn_{next(_compiled_fn_counter)}"
         compiled_fn = self.compiler_fn(None, None)
-        log_code(compiled_fn.__code__, f"COMPILED_FN {compiled_fn_name}")
+        log_code(
+            compiled_fn.__code__,
+            f"COMPILED_FN {compiled_fn_name}",
+            log_fn=logging.debug,
+        )
         compiled_fn = disable(compiled_fn)
         tx.f_globals[compiled_fn_name] = compiled_fn
         self.code_options['co_names'] += (compiled_fn_name,)
@@ -60,6 +65,8 @@ class OutputGraph:
 
     def compile_subgraph(self, tx: PyEvalBase):
         tx.prune_dead_locals()
+        # tx.symbolic_locals = {'z': tx.symbolic_locals['z']}
+        # tx.symbolic_locals = tx.symbolic_locals
 
         stack_values = list(tx.stack)
         restore_vars = []
@@ -94,5 +101,4 @@ class OutputGraph:
         self.add_output_instructions(
             [PyCodegen(tx).create_store(var) for var in reversed(restore_vars)]
         )
-
-        # log_instructions(self.instructions, 'compile_subgraph()')
+        log_instructions(self.instructions, 'COMPILE_SUBGRAPH', log_fn=logging.debug)

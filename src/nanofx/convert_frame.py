@@ -39,7 +39,7 @@ def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
         code_options.update(tracer.output.code_options)
         instructions[:] = tracer.output.instructions
 
-    logging.debug(f"convert_frame: {frame}")
+    logging.info(f"convert_frame: {frame}")
     code = frame.f_code
     log_code(code, "RAW BYTECODE")
 
