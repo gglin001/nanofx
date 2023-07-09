@@ -591,6 +591,7 @@ class PyEval(PyEvalBase):
             args = [f"___stack{i}" for i in range(stack_len)]
             args.extend(v for v in argnames if v not in args)
 
+            code_options_update["co_argcount"] = len(args)
             code_options_update["co_varnames"] = tuple(
                 args + [v for v in code_options["co_varnames"] if v not in args]
             )
@@ -611,7 +612,7 @@ class PyEval(PyEvalBase):
             instructions[:] = prefix + instructions
 
         new_code = transform_code_object(self.f_code, update)
-        log_code(new_code, "create_call_resume_at(), NEW CODE")
+        log_code(new_code, f"{name}")
 
         self.f_globals[name] = types.FunctionType(new_code, self.f_globals, name)
 
