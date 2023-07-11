@@ -8,6 +8,7 @@
 
 ## short-term
 
+- a (more)simple & clean code structure
 - support co_freevars & co_cellvars
 - support more variable type
 - a long list ...

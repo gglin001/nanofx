@@ -49,8 +49,5 @@ def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
         "NEW BYTECODE", code.co_name, code.co_filename, code.co_firstlineno, out_code
     )
 
-    # debug, no trace
-    # return None
-
     g = GuardedCode(out_code)
     return g
