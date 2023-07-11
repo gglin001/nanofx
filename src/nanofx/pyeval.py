@@ -488,8 +488,6 @@ class InlinePyEval(PyEvalBase):
         )
         self.parent = parent
         self.symbolic_result = None
-        # TODO
-        # self.closure_cells = closure_cells
 
     @classmethod
     def inline_call(
@@ -506,7 +504,6 @@ class InlinePyEval(PyEvalBase):
         logging.debug(f"INLINING {code}")
         log_code(code, "INLINE CODE", log_fn=logging.debug)
 
-        # TODO: bind_args()
         bound = inspect.signature(func.var).bind(*args, **kwargs)
         bound.apply_defaults()
         sub_locals = OrderedDict(bound.arguments.items())
