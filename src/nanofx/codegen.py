@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import sys
 
 from functools import lru_cache
 from typing import TYPE_CHECKING
@@ -103,12 +102,6 @@ class PyCodegen:
             ]
 
     def create_call_function_kw(self, nargs, kw_names, push_null):
-        if sys.version_info >= (3, 11):
-            output = create_call_function(nargs, push_null)
-            assert output[-2].opname == "PRECALL"
-            kw_names_inst = create_instruction("KW_NAMES", argval=kw_names)
-            output.insert(-2, kw_names_inst)
-            return output
         return [
             self.create_load_const(kw_names),
             create_instruction("CALL_FUNCTION_KW", arg=nargs),
@@ -118,8 +111,9 @@ class PyCodegen:
         self.append_output(create_load_global(fn_name, False))
 
         placeholders = self.tx.output.inputs
-        # TODO: rm hardcode
         for x in placeholders:
+            # TODO: support more source types
+            assert isinstance(x.source, LocalSource)
             self.append_output(self.create_load(x.source.local_name))
         self.extend_output(create_call_function(len(placeholders), False))
 
