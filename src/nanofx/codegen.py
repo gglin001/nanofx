@@ -39,48 +39,6 @@ class PyCodegen:
         self.graph_outputs = collections.OrderedDict()
         self.instructions: list[Instruction] = []
 
-    def call_one(self, value: SymVar):
-        """Generate code such that top-of-stack (TOS) is set to value."""
-        output = self.instructions
-        graph_outputs = self.graph_outputs
-
-        if self.top_of_stack is value:
-            output.append(create_dup_top())
-            return
-
-        # TODO: better org
-        if value.source is not None:
-            if isinstance(value.source, LocalSource):
-                output.append(self.create_load(value.source.local_name))
-            else:
-                raise Exception(f"unsupported source: {value.source}")
-        elif value.vtype == TensorType:
-            graph_outputs_key = id(value)
-            if graph_outputs_key not in graph_outputs:
-                graph_outputs[graph_outputs_key] = value
-
-            output.append(self.create_load(self.graph_output_var))
-            # TODO: rm hardcode
-            output.append(self.create_load_const(0))
-            output.append(create_instruction("BINARY_SUBSCR"))
-        elif value.vtype == None:
-            output.append(self.create_load_const(None))
-        elif value.vtype == types.FunctionType:
-            output.append(self.create_load_global(value.var.__name__, False))
-        elif value.vtype == types.BuiltinFunctionType:
-            if value.var == print:
-                output.append(self.create_load_global(value.var.__name__, False))
-        elif value.vtype == str:
-            output.append(self.create_load_const(value.var))
-        else:
-            raise ValueError(f"unsupported type: {value.vtype}")
-
-        self.top_of_stack = value
-
-    def call(self, vars: list[SymVar]):
-        for var in vars:
-            self.call_one(var)
-
     def clear_tos(self):
         self.top_of_stack = None
 
@@ -164,3 +122,45 @@ class PyCodegen:
         for x in placeholders:
             self.append_output(self.create_load(x.source.local_name))
         self.extend_output(create_call_function(len(placeholders), False))
+
+    def call(self, vars: list[SymVar]):
+        for var in vars:
+            self.call_one(var)
+
+    def call_one(self, value: SymVar):
+        """Generate code such that top-of-stack (TOS) is set to value."""
+        output = self.instructions
+        graph_outputs = self.graph_outputs
+
+        if self.top_of_stack is value:
+            output.append(create_dup_top())
+            return
+
+        # TODO: better org
+        if value.source is not None:
+            if isinstance(value.source, LocalSource):
+                output.append(self.create_load(value.source.local_name))
+            else:
+                raise Exception(f"unsupported source: {value.source}")
+        elif value.vtype == TensorType:
+            graph_outputs_key = id(value)
+            if graph_outputs_key not in graph_outputs:
+                graph_outputs[graph_outputs_key] = value
+
+            output.append(self.create_load(self.graph_output_var))
+            # TODO: rm hardcode
+            output.append(self.create_load_const(0))
+            output.append(create_instruction("BINARY_SUBSCR"))
+        elif value.vtype == None:
+            output.append(self.create_load_const(None))
+        elif value.vtype == types.FunctionType:
+            output.append(self.create_load_global(value.var.__name__, False))
+        elif value.vtype == types.BuiltinFunctionType:
+            if value.var == print:
+                output.append(self.create_load_global(value.var.__name__, False))
+        elif value.vtype == str:
+            output.append(self.create_load_const(value.var))
+        else:
+            raise ValueError(f"unsupported type: {value.vtype}")
+
+        self.top_of_stack = value
