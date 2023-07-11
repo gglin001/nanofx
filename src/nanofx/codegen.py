@@ -48,6 +48,7 @@ class PyCodegen:
             output.append(create_dup_top())
             return
 
+        # TODO: better org
         if value.source is not None:
             if isinstance(value.source, LocalSource):
                 output.append(self.create_load(value.source.local_name))
@@ -72,7 +73,6 @@ class PyCodegen:
         elif value.vtype == str:
             output.append(self.create_load_const(value.var))
         else:
-            # TODO: support container types
             raise ValueError(f"unsupported type: {value.vtype}")
 
         self.top_of_stack = value

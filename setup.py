@@ -91,7 +91,6 @@ class CMakeBuildExt(build_ext):
 if __name__ == '__main__':
     ext_modules = [Extension('nanofx._eval_frame', [])]
     cmdclass = {'build_ext': CMakeBuildExt}
-    # TODO: add more info
     setup(
         name='nanofx',
         version=_get_version(),
