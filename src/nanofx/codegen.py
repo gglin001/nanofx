@@ -137,6 +137,7 @@ class PyCodegen:
             else:
                 raise Exception(f"unsupported source: {value.source}")
         elif value.vtype == TensorType:
+            # TODO: clean it
             graph_outputs_key = id(value)
             if graph_outputs_key not in graph_outputs:
                 graph_outputs[graph_outputs_key] = value
