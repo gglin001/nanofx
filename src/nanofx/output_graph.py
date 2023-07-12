@@ -88,8 +88,7 @@ class OutputGraph:
         cg.call(stack_values)
 
         output = []
-
-        if len(cg.graph_outputs) != 0:
+        if tx.count_calls > 0 or len(cg.graph_outputs) != 0:
             output.extend(self.apply_compiler(tx))
 
             if len(cg.graph_outputs) != 0:

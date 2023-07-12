@@ -41,12 +41,12 @@ def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
 
     logging.info(f"convert_frame: {frame}")
     code = frame.f_code
-    log_code(code, "RAW BYTECODE")
+    log_code(code, "RAW_BYTECODE")
 
     # TODO: rm torch code dependency
     out_code = transform_code_object(code, transform)
     log_bytecode(
-        "NEW BYTECODE", code.co_name, code.co_filename, code.co_firstlineno, out_code
+        "NEW_BYTECODE", code.co_name, code.co_filename, code.co_firstlineno, out_code
     )
 
     g = GuardedCode(out_code)

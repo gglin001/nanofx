@@ -61,6 +61,12 @@ class SymVar:
         if inspect.isbuiltin(self.var):
             if self.var is print:
                 raise NotImplementedError("print() is not supported")
+            elif self.var is operator.add:
+                return SymVar(vtype=args[0].vtype)
+            elif self.var is operator.sub:
+                return SymVar(vtype=args[0].vtype)
+            else:
+                raise NotImplementedError(f"builtin {self.var} is not supported")
 
         return tx.inline_call_function(self, args, kwargs)
 
@@ -148,6 +154,9 @@ class PyEvalBase:
         self.current_instruction: Instruction | None = None
         self.next_instruction: Instruction | None = None
         self.lineno = code_options["co_firstlineno"]
+
+        # TODO: tmp states, remove in the future
+        self.count_calls = 0
 
     def get_state(self):
         return PyEvalState(
@@ -253,6 +262,7 @@ class PyEvalBase:
         kwargs: dict[str, SymVar],
     ):
         var = fn.call(self, *args, **kwargs)
+        self.count_calls += 1
 
         self.push(var)
 
@@ -292,7 +302,7 @@ class PyEvalBase:
         nargs = len(inspect.signature(fn).parameters)
         args = self.popn(nargs)
         assert type(args[0]) == type(args[1])
-        self.push(SymVar(vtype=args[0].vtype))
+        self.call_function(SymVar(var=fn), args, {})
 
     def BINARY_SUBTRACT(self, inst: Instruction):
         fn = operator.sub
@@ -300,7 +310,7 @@ class PyEvalBase:
         nargs = len(inspect.signature(fn).parameters)
         args = self.popn(nargs)
         assert type(args[0]) == type(args[1])
-        self.push(SymVar(vtype=args[0].vtype))
+        self.call_function(SymVar(var=fn), args, {})
 
     # def BINARY_SUBSCR(self, inst: Instruction):
     # def BINARY_FLOOR_DIVIDE(self, inst: Instruction):
@@ -502,7 +512,7 @@ class InlinePyEval(PyEvalBase):
             raise NotImplementedError(f"inline_call {code.co_name}")
 
         logging.debug(f"INLINING {code}")
-        log_code(code, "INLINE CODE", log_fn=logging.debug)
+        log_code(code, "INLINE_BYTECODE", log_fn=logging.debug)
 
         bound = inspect.signature(func.var).bind(*args, **kwargs)
         bound.apply_defaults()

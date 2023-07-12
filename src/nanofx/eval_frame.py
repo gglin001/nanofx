@@ -30,7 +30,7 @@ class BaseContext:
             set_eval_frame(old_callback)
             return result
 
-        _fn.raw_fn = fn
+        _fn.wrapped_fn = fn  # type: ignore
 
         return _fn
 

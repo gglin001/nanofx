@@ -25,8 +25,8 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
     def dummy_print(*args, **kwargs):
         print("==== dummy_print: ")
         # return args[0]
-        # return (args[0],)
-        return (10,)
+        return (args[0],)
+        # return (10,)
 
     return dummy_print
 
@@ -35,8 +35,8 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
 def func(x, y):
     z = x + y
     print("zzzz")
-    # zz = z - z
-    zz = x - y
+    zz = z - z
+    # zz = x - y
     return zz
 
 
