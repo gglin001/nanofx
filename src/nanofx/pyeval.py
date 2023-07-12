@@ -4,7 +4,6 @@ import copy
 import dis
 import functools
 import inspect
-import itertools
 import logging
 import operator
 import types
@@ -24,51 +23,13 @@ from .bytecode_transformation import (
 )
 from .codegen import PyCodegen
 from .output_graph import OutputGraph
-from .source import LocalSource, Source
+from .source import LocalSource
+from .symvar import SymVar
 from .utils import log_code
 
 if TYPE_CHECKING:
     # import opcode
     pass
-
-
-_sym_var_id_counter = itertools.count()
-
-
-class SymVar:
-    def __init__(
-        self,
-        *,
-        var: Any = None,
-        vtype: Any = None,
-        tx: PyEvalBase | None = None,
-        source: Source | None = None,
-    ) -> None:
-        self.var = var
-        self.vtype = vtype if var is None else type(var)
-        self.tx = tx
-        self.source = source
-
-        self.id = f"id_{next(_sym_var_id_counter)}"
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-    def __str__(self) -> str:
-        return f"SymVar({self.vtype}, {self.id})"
-
-    def call(self, tx: PyEvalBase, *args, **kwargs) -> Any:
-        if inspect.isbuiltin(self.var):
-            if self.var is print:
-                raise NotImplementedError("print() is not supported")
-            elif self.var is operator.add:
-                return SymVar(vtype=args[0].vtype)
-            elif self.var is operator.sub:
-                return SymVar(vtype=args[0].vtype)
-            else:
-                raise NotImplementedError(f"builtin {self.var} is not supported")
-
-        return tx.inline_call_function(self, args, kwargs)
 
 
 def break_graph_if_unsupported(*, push: int):
