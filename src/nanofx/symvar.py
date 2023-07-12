@@ -37,6 +37,7 @@ class SymVar:
         return f"SymVar({self.vtype}, {self.id})"
 
     def call(self, tx: PyEvalBase, *args, **kwargs) -> Any:
+        # TODO: better org
         if inspect.isbuiltin(self.var):
             if self.var is print:
                 raise NotImplementedError("print() is not supported")
