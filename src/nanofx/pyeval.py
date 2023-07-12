@@ -302,7 +302,7 @@ class PyEvalBase:
         nargs = len(inspect.signature(fn).parameters)
         args = self.popn(nargs)
         assert type(args[0]) == type(args[1])
-        self.push(self.call_function(SymVar(var=fn), args, {}))
+        self.call_function(SymVar(var=fn), args, {})
 
     def BINARY_SUBTRACT(self, inst: Instruction):
         fn = operator.sub
@@ -310,7 +310,7 @@ class PyEvalBase:
         nargs = len(inspect.signature(fn).parameters)
         args = self.popn(nargs)
         assert type(args[0]) == type(args[1])
-        self.push(self.call_function(SymVar(var=fn), args, {}))
+        self.call_function(SymVar(var=fn), args, {})
 
     # def BINARY_SUBSCR(self, inst: Instruction):
     # def BINARY_FLOOR_DIVIDE(self, inst: Instruction):
