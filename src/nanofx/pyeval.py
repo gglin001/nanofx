@@ -61,7 +61,7 @@ def break_graph_if_unsupported(*, push: int):
             stack_effect = dis.stack_effect(inst.opcode, inst.arg)
             self.popn(push - stack_effect)
             for _ in range(push):
-                self.push(SymVar(var=None))
+                self.push(SymVar(var=SymVar(var=None)))
 
             self.output.add_output_instructions(
                 self.create_call_resume_at(self.next_instruction)
