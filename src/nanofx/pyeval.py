@@ -343,7 +343,12 @@ class PyEvalBase:
     # def BUILD_LIST(self, inst: Instruction):
     # def BUILD_SET(self, inst: Instruction):
     # def BUILD_MAP(self, inst: Instruction):
-    # def LOAD_ATTR(self, inst: Instruction):
+    def LOAD_ATTR(self, inst: Instruction):
+        fn = getattr
+
+        owner = self.pop()
+        self.call_function(SymVar(var=fn), [owner, SymVar(var=inst.argval)], {})
+
     # def COMPARE_OP(self, inst: Instruction):
 
     # def IMPORT_NAME(self, inst: Instruction):

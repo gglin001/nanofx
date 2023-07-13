@@ -38,14 +38,22 @@ class SymVar:
 
     def call(self, tx: PyEvalBase, *args, **kwargs) -> Any:
         # TODO: better org
-        if inspect.isbuiltin(self.var):
-            if self.var is print:
+        var = self.var
+        if inspect.isbuiltin(var):
+            if var is print:
                 raise NotImplementedError("print() is not supported")
-            elif self.var is operator.add:
+            elif var is getattr:
+                object, name = args
+                attr = getattr(object.var, name.var)
+                return SymVar(var=attr)
+            elif var is operator.add:
                 return SymVar(vtype=args[0].vtype)
-            elif self.var is operator.sub:
+            elif var is operator.sub:
                 return SymVar(vtype=args[0].vtype)
             else:
-                raise NotImplementedError(f"builtin {self.var} is not supported")
+                raise NotImplementedError(f"builtin {var} is not supported")
+        elif var.__module__.startswith("paddle."):
+            # TODO: support multiple ouputs and containers
+            return SymVar(vtype=args[0].vtype)
 
         return tx.inline_call_function(self, args, kwargs)
