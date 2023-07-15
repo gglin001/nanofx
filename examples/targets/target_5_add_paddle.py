@@ -6,6 +6,7 @@ import logging
 logging.captureWarnings(True)
 
 import paddle
+import paddle._C_ops
 
 import nanofx
 
@@ -31,7 +32,7 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
 def net(a, b):
     c = paddle.add(a, b)
     d = paddle.multiply(c, a)
-    e = paddle.add(c, d)
+    e = paddle._C_ops.add(a, b)
     return e
 
 

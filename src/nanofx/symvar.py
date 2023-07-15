@@ -52,7 +52,7 @@ class SymVar:
                 return SymVar(vtype=args[0].vtype)
             else:
                 raise NotImplementedError(f"builtin {var} is not supported")
-        elif var.__module__.startswith("paddle."):
+        elif var.__module__.startswith("paddle"):
             # TODO: support multiple ouputs and containers
             return SymVar(vtype=args[0].vtype)
 

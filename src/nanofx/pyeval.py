@@ -221,9 +221,11 @@ class PyEvalBase:
         fn: SymVar,
         args: list[SymVar],
         kwargs: dict[str, SymVar],
+        count_call=True,
     ):
         var = fn.call(self, *args, **kwargs)
-        self.count_calls += 1
+        if count_call:
+            self.count_calls += 1
 
         self.push(var)
 
@@ -347,7 +349,9 @@ class PyEvalBase:
         fn = getattr
 
         owner = self.pop()
-        self.call_function(SymVar(var=fn), [owner, SymVar(var=inst.argval)], {})
+        self.call_function(
+            SymVar(var=fn), [owner, SymVar(var=inst.argval)], {}, count_call=False
+        )
 
     # def COMPARE_OP(self, inst: Instruction):
 
@@ -407,7 +411,17 @@ class PyEvalBase:
     # def STORE_DEREF(self, inst: Instruction):
     # def DELETE_DEREF(self, inst: Instruction):
 
-    # def CALL_FUNCTION_KW(self, inst: Instruction):
+    @break_graph_if_unsupported(push=1)
+    def CALL_FUNCTION_KW(self, inst: Instruction):
+        argnames = self.pop()
+        args = self.popn(inst.argval)
+        fn = self.pop()
+        argnames = argnames.var
+        args, kwargs_list = args[: -len(argnames)], args[-len(argnames) :]
+        kwargs = dict(zip(argnames, kwargs_list))
+        assert len(kwargs) == len(argnames)
+        self.call_function(fn, args, kwargs)
+
     # def CALL_FUNCTION_EX(self, inst: Instruction):
 
     # def SETUP_WITH(self, inst: Instruction):
