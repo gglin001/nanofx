@@ -371,9 +371,21 @@ class PyEvalBase:
                 return
         raise Exception("JUMP_ABSOLUTE error")
 
-    # TODO
     def POP_JUMP_IF_FALSE(self, inst: Instruction):
-        pass
+        value = self.pop()
+        if isinstance(self, PyEval):
+            self.push(value)
+            self.output.compile_subgraph(self)
+            self.pop()
+
+            if_next = self.create_call_resume_at(self.next_instruction)
+            if_jump = self.create_call_resume_at(inst.target)
+
+            self.output.add_output_instructions(
+                [create_instruction(inst.opname, target=if_jump[0])] + if_next + if_jump
+            )
+        else:
+            raise NotImplementedError(f"POP_JUMP_IF_FALSE for InlinePyEval")
 
     # def POP_JUMP_IF_TRUE(self, inst: Instruction):
 
