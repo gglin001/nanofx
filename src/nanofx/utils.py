@@ -24,17 +24,21 @@ def log_code(code: types.CodeType, prefix='', log_fn=logging.info):
     )
 
 
+def format_instruction(inst: dis.Instruction | Instruction):
+    if inst.offset is None:
+        if inst.arg is None:
+            return f"{'': <15} {inst.opname: <25} {'': <2} ({inst.argval})"
+        else:
+            return f"{'': <15} {inst.opname: <25} {inst.arg: <2} ({inst.argval})"
+    else:
+        return f"{'' : <12} {inst.offset} {inst.opname} {inst.argval}"
+
+
 def log_instructions(
     instructions: list[dis.Instruction] | list[Instruction],
     prefix='',
     log_fn=logging.info,
 ):
-    def format_instruction(inst: dis.Instruction | Instruction):
-        if inst.arg is None:
-            return f"{'': <15} {inst.opname: <25} {'': <2} ({inst.argval})"
-        else:
-            return f"{'': <15} {inst.opname: <25} {inst.arg: <2} ({inst.argval})"
-
     log_fn(f"{prefix}")
     for inst in instructions:
         log_fn(format_instruction(inst))

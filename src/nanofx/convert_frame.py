@@ -7,7 +7,7 @@ import types
 from typing import Any, Callable
 
 from .bytecode_transformation import Instruction, transform_code_object
-from .paddle_utils import Tensor, skip_paddle_frame
+from .paddle_utils import Tensor, skip_paddle_filename, skip_paddle_frame
 from .pyeval import PyEval
 from .utils import log_bytecode, log_code
 
@@ -18,6 +18,9 @@ class GuardedCode:
 
 
 def skip_frame(frame: types.FrameType) -> bool:
+    if skip_paddle_filename(frame.f_code.co_filename):
+        return True
+
     if skip_paddle_frame(frame):
         return True
 
@@ -30,6 +33,7 @@ def skip_frame(frame: types.FrameType) -> bool:
 
 def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
     if skip_frame(frame):
+        logging.debug(f"skip_frame: {frame}")
         return None
 
     def transform(instructions: list[Instruction], code_options: dict):

@@ -12,8 +12,8 @@ import paddle.nn
 import nanofx
 import nanofx.utils
 
-logging.basicConfig(level=logging.DEBUG, format="%(message)s")
-# logging.basicConfig(level=logging.INFO, format="%(message)s")
+# logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = None):
@@ -30,21 +30,17 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
     return dummy_print
 
 
-def func1(a0, b0):
-    print("func1")
-    c = a0 + b0
-    return c
-
-
-def func0(a, b):
-    c = func1(a, b)
-    return c
+def if_func(x, z):
+    if x:
+        return x + x
+    return z + z
 
 
 @nanofx.optimize(my_compiler)
 def add(x, y):
-    z = func0(x, y)
-    return z
+    z = x + y
+    res = if_func(x, z)
+    return res
 
 
 in_a = paddle.ones([1], dtype='float32')

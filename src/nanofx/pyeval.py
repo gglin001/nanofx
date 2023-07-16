@@ -4,7 +4,6 @@ import copy
 import dis
 import functools
 import inspect
-import itertools
 import logging
 import operator
 import types
@@ -24,51 +23,13 @@ from .bytecode_transformation import (
 )
 from .codegen import PyCodegen
 from .output_graph import OutputGraph
-from .source import LocalSource, Source
-from .utils import log_code
+from .source import LocalSource
+from .symvar import SymVar
+from .utils import format_instruction, log_code
 
 if TYPE_CHECKING:
     # import opcode
     pass
-
-
-_sym_var_id_counter = itertools.count()
-
-
-class SymVar:
-    def __init__(
-        self,
-        *,
-        var: Any = None,
-        vtype: Any = None,
-        tx: PyEvalBase | None = None,
-        source: Source | None = None,
-    ) -> None:
-        self.var = var
-        self.vtype = vtype if var is None else type(var)
-        self.tx = tx
-        self.source = source
-
-        self.id = f"id_{next(_sym_var_id_counter)}"
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-    def __str__(self) -> str:
-        return f"SymVar({self.vtype}, {self.id})"
-
-    def call(self, tx: PyEvalBase, *args, **kwargs) -> Any:
-        if inspect.isbuiltin(self.var):
-            if self.var is print:
-                raise NotImplementedError("print() is not supported")
-            elif self.var is operator.add:
-                return SymVar(vtype=args[0].vtype)
-            elif self.var is operator.sub:
-                return SymVar(vtype=args[0].vtype)
-            else:
-                raise NotImplementedError(f"builtin {self.var} is not supported")
-
-        return tx.inline_call_function(self, args, kwargs)
 
 
 def break_graph_if_unsupported(*, push: int):
@@ -83,7 +44,7 @@ def break_graph_if_unsupported(*, push: int):
                     f"break_graph_if_unsupported triggered compile", exc_info=True
                 )
 
-                if isinstance(self, InlinePyEval):
+                if not isinstance(self, PyEval):
                     raise
 
             self.set_state(state)
@@ -100,7 +61,7 @@ def break_graph_if_unsupported(*, push: int):
             stack_effect = dis.stack_effect(inst.opcode, inst.arg)
             self.popn(push - stack_effect)
             for _ in range(push):
-                self.push(SymVar(var=None))
+                self.push(SymVar(var=SymVar(var=None)))
 
             self.output.add_output_instructions(
                 self.create_call_resume_at(self.next_instruction)
@@ -194,7 +155,7 @@ class PyEvalBase:
             self.lineno = inst.starts_line
             logging.debug(f"TRACE starts_line {self.f_code.co_filename}:{self.lineno}")
 
-        if len(self.stack) == 0 and not isinstance(self, InlinePyEval):
+        if len(self.stack) == 0 and isinstance(self, PyEval):
             self.checkpoint = inst, self.get_state()
 
         logging.debug(f"TRACE {inst.opname} {inst.argval} {self.stack}")
@@ -214,7 +175,7 @@ class PyEvalBase:
             raise
 
         # fallback
-        logging.debug(f"graph break from {inst.opname} {inst.argval}")
+        logging.debug(f"graph break from instruction: \n{format_instruction(inst)}")
         assert not self.output.instructions
         assert self.checkpoint is not None
         continue_inst, state = self.checkpoint
@@ -260,9 +221,11 @@ class PyEvalBase:
         fn: SymVar,
         args: list[SymVar],
         kwargs: dict[str, SymVar],
+        count_call=True,
     ):
         var = fn.call(self, *args, **kwargs)
-        self.count_calls += 1
+        if count_call:
+            self.count_calls += 1
 
         self.push(var)
 
@@ -382,8 +345,17 @@ class PyEvalBase:
     # def BUILD_LIST(self, inst: Instruction):
     # def BUILD_SET(self, inst: Instruction):
     # def BUILD_MAP(self, inst: Instruction):
-    # def LOAD_ATTR(self, inst: Instruction):
-    # def COMPARE_OP(self, inst: Instruction):
+    def LOAD_ATTR(self, inst: Instruction):
+        fn = getattr
+
+        owner = self.pop()
+        self.call_function(
+            SymVar(var=fn), [owner, SymVar(var=inst.argval)], {}, count_call=False
+        )
+
+    # TODO:
+    def COMPARE_OP(self, inst: Instruction):
+        pass
 
     # def IMPORT_NAME(self, inst: Instruction):
     # def IMPORT_FROM(self, inst: Instruction):
@@ -399,7 +371,22 @@ class PyEvalBase:
                 return
         raise Exception("JUMP_ABSOLUTE error")
 
-    # def POP_JUMP_IF_FALSE(self, inst: Instruction):
+    def POP_JUMP_IF_FALSE(self, inst: Instruction):
+        value = self.pop()
+        if isinstance(self, PyEval):
+            self.push(value)
+            self.output.compile_subgraph(self)
+            self.pop()
+
+            if_next = self.create_call_resume_at(self.next_instruction)
+            if_jump = self.create_call_resume_at(inst.target)
+
+            self.output.add_output_instructions(
+                [create_instruction(inst.opname, target=if_jump[0])] + if_next + if_jump
+            )
+        else:
+            raise NotImplementedError(f"{inst.opname} for InlinePyEval")
+
     # def POP_JUMP_IF_TRUE(self, inst: Instruction):
 
     def LOAD_GLOBAL(self, inst: Instruction):
@@ -441,7 +428,17 @@ class PyEvalBase:
     # def STORE_DEREF(self, inst: Instruction):
     # def DELETE_DEREF(self, inst: Instruction):
 
-    # def CALL_FUNCTION_KW(self, inst: Instruction):
+    @break_graph_if_unsupported(push=1)
+    def CALL_FUNCTION_KW(self, inst: Instruction):
+        argnames = self.pop()
+        args = self.popn(inst.argval)
+        fn = self.pop()
+        argnames = argnames.var
+        args, kwargs_list = args[: -len(argnames)], args[-len(argnames) :]
+        kwargs = dict(zip(argnames, kwargs_list))
+        assert len(kwargs) == len(argnames)
+        self.call_function(fn, args, kwargs)
+
     # def CALL_FUNCTION_EX(self, inst: Instruction):
 
     # def SETUP_WITH(self, inst: Instruction):

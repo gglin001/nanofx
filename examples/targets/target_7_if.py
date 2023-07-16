@@ -30,20 +30,11 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
     return dummy_print
 
 
-def func1(a0, b0):
-    print("func1")
-    c = a0 + b0
-    return c
-
-
-def func0(a, b):
-    c = func1(a, b)
-    return c
-
-
 @nanofx.optimize(my_compiler)
 def add(x, y):
-    z = func0(x, y)
+    z = x + y
+    if x:
+        return x
     return z
 
 

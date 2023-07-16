@@ -153,7 +153,7 @@ class PyCodegen:
         elif value.vtype == types.BuiltinFunctionType:
             if value.var == print:
                 output.append(self.create_load_global(value.var.__name__, False))
-        elif value.vtype == str:
+        elif value.vtype in [str, bool, int]:
             output.append(self.create_load_const(value.var))
         else:
             raise ValueError(f"unsupported type: {value.vtype}")

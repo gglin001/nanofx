@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable, OrderedDict
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
 from .source import LocalSource
-from .utils import log_code, log_instructions
+from .utils import format_instruction, log_code, log_instructions
 
 if TYPE_CHECKING:
     from .pyeval import PyEval, PyEvalBase, SymVar
@@ -64,6 +64,9 @@ class OutputGraph:
         return cg.instructions
 
     def compile_subgraph(self, tx: PyEvalBase):
+        logging.debug(
+            f"start compile_subgraph, current_instruction: \n{format_instruction(tx.current_instruction)}"  # type: ignore
+        )
         tx.prune_dead_locals()
 
         stack_values = list(tx.stack)

@@ -5,15 +5,15 @@ import logging
 # ignore DeprecationWarning from `pkg_resources`
 logging.captureWarnings(True)
 
-
 import paddle
-import paddle.nn
+import paddle._C_ops
 
 import nanofx
-import nanofx.utils
 
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+paddle.seed(0)
 
 
 def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = None):
@@ -30,27 +30,15 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
     return dummy_print
 
 
-def func1(a0, b0):
-    print("func1")
-    c = a0 + b0
-    return c
-
-
-def func0(a, b):
-    c = func1(a, b)
-    return c
-
-
 @nanofx.optimize(my_compiler)
-def add(x, y):
-    z = func0(x, y)
-    return z
+def net(a, b):
+    c = paddle.add(a, b)
+    d = paddle.multiply(c, a)
+    e = paddle._C_ops.add(a, b)
+    return e
 
 
 in_a = paddle.ones([1], dtype='float32')
 in_b = paddle.add(in_a, in_a)
-res = add(in_a, in_b)
-
-# print("in_a = ", in_a)
-# print("in_b = ", in_b)
+res = net(in_a, in_b)
 print("res = ", res)

@@ -180,7 +180,7 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   // NOTE: multi-threading is not supported now
   if (old_callback != Py_None && new_callback == Py_None) {
     if (old_eval_frame != &_PyEval_EvalFrameDefault) {
-      DEBUG_TRACE0("set _PyEval_EvalFrameDefault");
+      DEBUG_TRACE0("set_eval_frame _PyEval_EvalFrameDefault");
 #if PY_VERSION_HEX >= 0x03090000
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &_PyEval_EvalFrameDefault);
@@ -190,7 +190,7 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
     }
   } else if (old_callback == Py_None && new_callback != Py_None) {
     if (old_eval_frame != &custom_eval_frame_shim) {
-      DEBUG_TRACE0("set custom_eval_frame_shim");
+      DEBUG_TRACE0("set_eval_frame custom_eval_frame_shim");
 #if PY_VERSION_HEX >= 0x03090000
       _PyInterpreterState_SetEvalFrameFunc(tstate->interp,
                                            &custom_eval_frame_shim);
