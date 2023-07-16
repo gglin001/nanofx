@@ -11,8 +11,8 @@ import paddle.nn
 
 import nanofx
 
-# logging.basicConfig(level=logging.DEBUG, format="%(message)s")
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+# logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = None):

@@ -25,6 +25,10 @@ def skip_paddle_frame(frame: types.FrameType) -> bool:
 
 def skip_paddle_filename(filename: str) -> bool:
     # TODO: use regex
-    if '/paddle/' in filename:
+    if '/paddle/fluid/' in filename:
+        return True
+    elif '/paddle/nn/' in filename:
+        return True
+    elif '/paddle/tensor/' in filename:
         return True
     return False

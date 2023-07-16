@@ -33,6 +33,7 @@ def skip_frame(frame: types.FrameType) -> bool:
 
 def convert_frame(frame: types.FrameType, compiler_fn: Callable) -> Any:
     if skip_frame(frame):
+        logging.debug(f"skip_frame: {frame}")
         return None
 
     def transform(instructions: list[Instruction], code_options: dict):

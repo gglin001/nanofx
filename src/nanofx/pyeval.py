@@ -353,7 +353,9 @@ class PyEvalBase:
             SymVar(var=fn), [owner, SymVar(var=inst.argval)], {}, count_call=False
         )
 
-    # def COMPARE_OP(self, inst: Instruction):
+    # TODO:
+    def COMPARE_OP(self, inst: Instruction):
+        pass
 
     # def IMPORT_NAME(self, inst: Instruction):
     # def IMPORT_FROM(self, inst: Instruction):
@@ -369,7 +371,10 @@ class PyEvalBase:
                 return
         raise Exception("JUMP_ABSOLUTE error")
 
-    # def POP_JUMP_IF_FALSE(self, inst: Instruction):
+    # TODO
+    def POP_JUMP_IF_FALSE(self, inst: Instruction):
+        pass
+
     # def POP_JUMP_IF_TRUE(self, inst: Instruction):
 
     def LOAD_GLOBAL(self, inst: Instruction):

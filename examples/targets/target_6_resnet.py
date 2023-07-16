@@ -5,9 +5,10 @@ import logging
 # ignore DeprecationWarning from `pkg_resources`
 logging.captureWarnings(True)
 
-
 import paddle
 import paddle.nn
+
+from paddle.vision.models import resnet18
 
 import nanofx
 import nanofx.utils
@@ -25,28 +26,15 @@ def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = Non
     # dummy_print
     def dummy_print(*args, **kwargs):
         print("==== dummy_print: ")
-        return (args[0],)
+        return (args[1],)
 
     return dummy_print
 
 
-def func(x, y):
-    z = x + y
-    return z
+net = resnet18()
+net.eval()
+net = nanofx.optimize(my_compiler)(net)
 
-
-@nanofx.optimize(my_compiler)
-def add(a, b):
-    d = func(a, b)
-    return d
-
-
-in_a = paddle.rand([1])
-in_b = paddle.rand([1])
-res = add(in_a, in_b)
-
-# print("in_a = ", in_a)
-# print("in_b = ", in_b)
-print("res = ", res)
-
-# nanofx.utils.log_code(add.__code__, "add.__code__")
+example_input = paddle.rand([2, 3, 224, 224])
+output = net(example_input)
+print(output)
