@@ -44,7 +44,7 @@ def break_graph_if_unsupported(*, push: int):
                     f"break_graph_if_unsupported triggered compile", exc_info=True
                 )
 
-                if isinstance(self, InlinePyEval):
+                if not isinstance(self, PyEval):
                     raise
 
             self.set_state(state)
@@ -155,7 +155,7 @@ class PyEvalBase:
             self.lineno = inst.starts_line
             logging.debug(f"TRACE starts_line {self.f_code.co_filename}:{self.lineno}")
 
-        if len(self.stack) == 0 and not isinstance(self, InlinePyEval):
+        if len(self.stack) == 0 and isinstance(self, PyEval):
             self.checkpoint = inst, self.get_state()
 
         logging.debug(f"TRACE {inst.opname} {inst.argval} {self.stack}")
@@ -385,7 +385,7 @@ class PyEvalBase:
                 [create_instruction(inst.opname, target=if_jump[0])] + if_next + if_jump
             )
         else:
-            raise NotImplementedError(f"POP_JUMP_IF_FALSE for InlinePyEval")
+            raise NotImplementedError(f"{inst.opname} for InlinePyEval")
 
     # def POP_JUMP_IF_TRUE(self, inst: Instruction):
 
