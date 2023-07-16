@@ -25,7 +25,7 @@ from .codegen import PyCodegen
 from .output_graph import OutputGraph
 from .source import LocalSource
 from .symvar import SymVar
-from .utils import log_code
+from .utils import format_instruction, log_code
 
 if TYPE_CHECKING:
     # import opcode
@@ -175,7 +175,7 @@ class PyEvalBase:
             raise
 
         # fallback
-        logging.debug(f"graph break from {inst.opname} {inst.argval}")
+        logging.debug(f"graph break from instruction: \n{format_instruction(inst)}")
         assert not self.output.instructions
         assert self.checkpoint is not None
         continue_inst, state = self.checkpoint
