@@ -13,6 +13,8 @@ import nanofx
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # logging.basicConfig(level=logging.INFO, format="%(message)s")
 
+paddle.seed(0)
+
 
 def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = None):
     print("my_compiler() called with FX graph:")

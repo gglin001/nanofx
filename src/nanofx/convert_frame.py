@@ -18,9 +18,10 @@ class GuardedCode:
 
 
 def skip_frame(frame: types.FrameType) -> bool:
-    if skip_paddle_frame(frame):
-        return True
     if skip_paddle_filename(frame.f_code.co_filename):
+        return True
+
+    if skip_paddle_frame(frame):
         return True
 
     for v in frame.f_locals.values():
