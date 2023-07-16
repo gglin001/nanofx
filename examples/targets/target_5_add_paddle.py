@@ -38,7 +38,7 @@ def net(a, b):
     return e
 
 
-in_a = paddle.rand([1])
-in_b = paddle.rand([1])
+in_a = paddle.ones([1], dtype='float32')
+in_b = paddle.add(in_a, in_a)
 res = net(in_a, in_b)
 print("res = ", res)
