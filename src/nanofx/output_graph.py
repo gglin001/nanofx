@@ -20,11 +20,6 @@ _output_graph_var_counter = itertools.count()
 _compiled_fn_counter = itertools.count()
 
 
-class Tracer:
-    def __init__(self):
-        pass
-
-
 class OutputGraph:
     def __init__(
         self,
