@@ -4,7 +4,7 @@ import inspect
 import itertools
 import operator
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from .source import Source
 
@@ -38,7 +38,9 @@ class SymVar:
 
     def call(self, tx: PyEvalBase, *args, **kwargs) -> Any:
         # TODO: better org
+        assert isinstance(self.var, Callable)
         var = self.var
+
         if var.__module__.startswith("paddle"):
             # TODO: support multiple ouputs and containers
             return SymVar(vtype=args[0].vtype)

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Callable, OrderedDict
 
 from .bytecode_transformation import Instruction, create_instruction
 from .codegen import PyCodegen
+from .graph import Graph
 from .source import LocalSource
 from .utils import format_instruction, log_code, log_instructions
 
@@ -37,7 +38,9 @@ class OutputGraph:
         self.compiler_fn = compiler_fn
         self.root_tx = root_tx
 
+        # TODO: mv inputs to self.graph.nodes
         self.inputs: list[SymVar] = []
+        self.graph = Graph()
 
         self.should_exit = False
 
