@@ -576,11 +576,15 @@ class PyEval(PyEvalBase):
                     source=LocalSource(k),
                 )
 
-        # init inputs
-        for k in vars:
-            if k in frame.f_locals:
-                if not k.startswith("___stack"):
-                    self.output.inputs.append(self.symbolic_locals[k])
+        # TODO: rm hardcode
+        # create inputs
+        for var in self.symbolic_locals.values():
+            if isinstance(
+                var.source, LocalSource
+            ) and not var.source.local_name.startswith("___stack"):
+                self.output.graph.placeholder(
+                    name=var.source.local_name, type_expr=var.vtype
+                )
 
     def create_call_resume_at(self, inst: Instruction | None) -> list[Instruction]:
         assert inst is not None

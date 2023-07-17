@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 paddle.seed(0)
 
 
-def my_compiler(gl: nanofx.GraphLayer, example_inputs: list[paddle.Tensor] = None):
+def my_compiler(gl, example_inputs=None):
     print("my_compiler() called with FX graph:")
 
     # gl.graph.print_tabular()

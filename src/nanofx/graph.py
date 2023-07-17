@@ -76,6 +76,34 @@ class Graph:
         self.nodes.append(n)
         return n
 
+    def placeholder(
+        self,
+        name: str,
+        type_expr: Any = None,
+        default_value: Any = None,
+    ) -> Node:
+        args = () if default_value is None else (default_value,)
+        return self.create_node('placeholder', name, args=args, type_expr=type_expr)
+
+    def call_function(
+        self,
+        the_function: Callable[..., Any],
+        args: tuple[Any, ...] = (),
+        kwargs: dict[str, Any] = {},
+        type_expr: Any | None = None,
+    ) -> Node:
+        return self.create_node(
+            'call_function', the_function, args, kwargs, type_expr=type_expr
+        )
+
+    def print_tabular(self):
+        from tabulate import tabulate
+
+        node_specs = [[n.op, n.name, n.target, n.args, n.kwargs] for n in self.nodes]
+        print(
+            tabulate(node_specs, headers=['opcode', 'name', 'target', 'args', 'kwargs'])
+        )
+
 
 class CodeGen:
     def __init__(self):

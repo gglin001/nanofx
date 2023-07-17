@@ -33,8 +33,6 @@ class OutputGraph:
         self.compiler_fn = compiler_fn
         self.root_tx = root_tx
 
-        # TODO: mv inputs to self.graph.nodes
-        self.inputs: list[SymVar] = []
         self.graph = Graph()
 
         self.should_exit = False
@@ -43,11 +41,13 @@ class OutputGraph:
         self.instructions.extend(insts)
         self.should_exit = True
 
-    def apply_compiler(self, tx: PyEvalBase):
+    def apply_compiler(self, tx: PyEvalBase, rv: list[SymVar]):
         from .eval_frame import disable
 
+        self.graph.create_node(op="output", target="output", args=tuple(rv))
+
         compiled_fn_name = f"__compiled_fn_{next(_compiled_fn_counter)}"
-        compiled_fn = self.compiler_fn(None, None)
+        compiled_fn = self.compiler_fn(self.graph, None)
         log_code(
             compiled_fn.__code__,
             f"COMPILED_FN {compiled_fn_name}",
@@ -90,7 +90,8 @@ class OutputGraph:
 
         output = []
         if tx.count_calls > 0 or len(cg.graph_outputs) != 0:
-            output.extend(self.apply_compiler(tx))
+            rv = [x for x in cg.graph_outputs.values()]
+            output.extend(self.apply_compiler(tx, rv))
 
             if len(cg.graph_outputs) != 0:
                 output.append(cg.create_store(graph_output_var))
