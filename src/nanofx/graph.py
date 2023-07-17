@@ -8,15 +8,13 @@ class Node:
         self,
         *,
         graph: Graph,
-        name: str,
+        name: str | None,
         op: str,
         target: Callable[..., Any] | str,
         args: tuple[Any, ...],
         kwargs: dict[str, Any],
         return_type: Any | None = None,
     ) -> None:
-        self.graph = graph
-        self.name = name
         assert op in [
             'placeholder',
             'call_method',
@@ -26,16 +24,14 @@ class Node:
             'output',
             'root',
         ]
-        self.op = op
-        if op == 'call_function':
-            assert isinstance(target, Callable)
-        else:
-            assert isinstance(target, str)
 
+        self.graph = graph
+        self.name = name
+        self.op = op
         self.target = target
         self.args = args
         self.kwargs = kwargs
-        self.type: Any | None = return_type
+        self.return_type = return_type
 
         self.meta: dict[str, Any] = {}
 
@@ -54,46 +50,47 @@ class Graph:
         args: tuple[Any, ...] = (),
         kwargs: dict[str, Any] = {},
         name: str | None = None,
-        type_expr: Any | None = None,
+        return_type: Any | None = None,
     ) -> Node:
-        assert op in (
-            'call_function',
-            'call_method',
-            'get_attr',
-            'call_module',
-            'placeholder',
-            'output',
-        )
-        n = Node(
+        node = Node(
             graph=self,
             name=name,
             op=op,
             target=target,
             args=args,
             kwargs=kwargs,
-            return_type=type_expr,
+            return_type=return_type,
         )
-        self.nodes.append(n)
-        return n
+        self.nodes.append(node)
+        return node
 
     def placeholder(
         self,
-        name: str,
-        type_expr: Any = None,
+        target: str,
+        return_type: Any = None,
         default_value: Any = None,
     ) -> Node:
         args = () if default_value is None else (default_value,)
-        return self.create_node('placeholder', name, args=args, type_expr=type_expr)
+        return self.create_node(
+            op='placeholder',
+            target=target,
+            args=args,
+            return_type=return_type,
+        )
 
     def call_function(
         self,
-        the_function: Callable[..., Any],
+        target: Callable[..., Any],
         args: tuple[Any, ...] = (),
         kwargs: dict[str, Any] = {},
-        type_expr: Any | None = None,
+        return_type: Any | None = None,
     ) -> Node:
         return self.create_node(
-            'call_function', the_function, args, kwargs, type_expr=type_expr
+            op='call_function',
+            target=target,
+            args=args,
+            kwargs=kwargs,
+            return_type=return_type,
         )
 
     def print_tabular(self):

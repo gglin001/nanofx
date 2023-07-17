@@ -586,9 +586,7 @@ class PyEval(PyEvalBase):
             if isinstance(
                 var.source, LocalSource
             ) and not var.source.local_name.startswith("___stack"):
-                self.output.graph.placeholder(
-                    name=var.source.local_name, type_expr=var.vtype
-                )
+                self.output.graph.placeholder(var.source.local_name, var.vtype)
 
     def create_call_resume_at(self, inst: Instruction | None) -> list[Instruction]:
         assert inst is not None
