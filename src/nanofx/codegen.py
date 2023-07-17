@@ -158,6 +158,9 @@ class PyCodegen:
                 output.append(self.create_load_global(value.var.__name__, False))
         elif value.vtype in [str, bool, int]:
             output.append(self.create_load_const(value.var))
+        elif value.vtype == tuple:
+            self.call(value.var)
+            output.append(create_instruction("BUILD_TUPLE", arg=len(value.var)))
         else:
             raise ValueError(f"unsupported type: {value.vtype}")
 

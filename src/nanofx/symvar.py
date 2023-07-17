@@ -52,12 +52,10 @@ class SymVar:
                 object, name = args
                 attr = getattr(object.var, name.var)
                 return SymVar(var=attr)
-            elif var is operator.add:
+            elif var in [operator.add, operator.sub]:
                 ot = args[0].vtype
                 graph.call_function(var, args, kwargs, ot)
                 return SymVar(vtype=ot)
-            elif var is operator.sub:
-                return SymVar(vtype=args[0].vtype)
             else:
                 raise NotImplementedError(f"builtin {var} is not supported")
 

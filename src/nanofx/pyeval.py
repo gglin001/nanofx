@@ -341,7 +341,11 @@ class PyEvalBase:
         self.push(SymVar(var=inst.argval))
 
     # def LOAD_NAME(self, inst: Instruction):
-    # def BUILD_TUPLE(self, inst: Instruction):
+
+    def BUILD_TUPLE(self, inst: Instruction):
+        items = self.popn(inst.argval)
+        self.push(SymVar(var=tuple(items)))
+
     # def BUILD_LIST(self, inst: Instruction):
     # def BUILD_SET(self, inst: Instruction):
     # def BUILD_MAP(self, inst: Instruction):
