@@ -10,6 +10,7 @@ from .paddle_utils import TensorType
 from .source import LocalSource
 
 if TYPE_CHECKING:
+    from .graph import Node
     from .pyeval import PyEvalBase, SymVar
 
 
@@ -110,11 +111,13 @@ class PyCodegen:
     def make_call_generated_code(self, fn_name: str):
         self.append_output(create_load_global(fn_name, False))
 
-        placeholders = self.tx.output.inputs
-        for x in placeholders:
-            # TODO: support more source types
-            assert isinstance(x.source, LocalSource)
-            self.append_output(self.create_load(x.source.local_name))
+        placeholders: list[Node] = []
+        for node in self.tx.output.graph.nodes:
+            if node.op == "placeholder":
+                placeholders.append(node)
+
+        for node in placeholders:
+            self.append_output(self.create_load(node.target))
         self.extend_output(create_call_function(len(placeholders), False))
 
     def call(self, vars: list[SymVar]):
@@ -155,6 +158,9 @@ class PyCodegen:
                 output.append(self.create_load_global(value.var.__name__, False))
         elif value.vtype in [str, bool, int]:
             output.append(self.create_load_const(value.var))
+        elif value.vtype == tuple:
+            self.call(value.var)
+            output.append(create_instruction("BUILD_TUPLE", arg=len(value.var)))
         else:
             raise ValueError(f"unsupported type: {value.vtype}")
 

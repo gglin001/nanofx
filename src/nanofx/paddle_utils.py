@@ -20,7 +20,8 @@ def skip_paddle_frame(frame: types.FrameType) -> bool:
         return True
     elif frame.f_code.co_name == 'in_dygraph_mode':
         return True
-    return False
+    else:
+        return False
 
 
 def skip_paddle_filename(filename: str) -> bool:
@@ -31,4 +32,5 @@ def skip_paddle_filename(filename: str) -> bool:
         return True
     elif '/paddle/tensor/' in filename:
         return True
-    return False
+    else:
+        return False

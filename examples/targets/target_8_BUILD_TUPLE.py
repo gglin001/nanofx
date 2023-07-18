@@ -17,27 +17,26 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 def my_compiler(gl, example_inputs=None):
     print("my_compiler() called with FX graph:")
 
-    # gl.graph.print_tabular()
-    # return gl.forward
+    gl.print_tabular()
 
     # dummy_print
     def dummy_print(*args, **kwargs):
         print("==== dummy_print: ")
-        return 1, 2
-        # return args[0] + args[1]
+        return (args[0],)
 
     return dummy_print
 
 
+@nanofx.optimize(my_compiler)
 def add(a, b):
     c = a + b
-    return c
+    c = a - b
+    return c, a, b
 
 
 in_a = paddle.ones([1], dtype='float32')
 in_b = paddle.add(in_a, in_a)
 
-add = nanofx.optimize(my_compiler)(add)
 res = add(in_a, in_b)
 
 # print("in_a = ", in_a)

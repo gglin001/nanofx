@@ -341,7 +341,11 @@ class PyEvalBase:
         self.push(SymVar(var=inst.argval))
 
     # def LOAD_NAME(self, inst: Instruction):
-    # def BUILD_TUPLE(self, inst: Instruction):
+
+    def BUILD_TUPLE(self, inst: Instruction):
+        items = self.popn(inst.argval)
+        self.push(SymVar(var=tuple(items)))
+
     # def BUILD_LIST(self, inst: Instruction):
     # def BUILD_SET(self, inst: Instruction):
     # def BUILD_MAP(self, inst: Instruction):
@@ -353,9 +357,22 @@ class PyEvalBase:
             SymVar(var=fn), [owner, SymVar(var=inst.argval)], {}, count_call=False
         )
 
-    # TODO:
     def COMPARE_OP(self, inst: Instruction):
-        pass
+        comparison_ops = {
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+            "is": operator.is_,
+            "is not": operator.is_not,
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
+        if inst.argval not in comparison_ops:
+            raise NotImplementedError(f"{inst.opname} {inst.argval}")
+        op = comparison_ops[inst.argval]
+        left, right = self.popn(2)
+        self.call_function(SymVar(var=op), [left, right], {})
 
     # def IMPORT_NAME(self, inst: Instruction):
     # def IMPORT_FROM(self, inst: Instruction):
@@ -576,11 +593,13 @@ class PyEval(PyEvalBase):
                     source=LocalSource(k),
                 )
 
-        # init inputs
-        for k in vars:
-            if k in frame.f_locals:
-                if not k.startswith("___stack"):
-                    self.output.inputs.append(self.symbolic_locals[k])
+        # TODO: rm hardcode
+        # create inputs
+        for var in self.symbolic_locals.values():
+            if isinstance(
+                var.source, LocalSource
+            ) and not var.source.local_name.startswith("___stack"):
+                self.output.graph.placeholder(var.source.local_name, var.vtype)
 
     def create_call_resume_at(self, inst: Instruction | None) -> list[Instruction]:
         assert inst is not None
