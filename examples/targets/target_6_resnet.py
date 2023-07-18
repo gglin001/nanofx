@@ -20,6 +20,8 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 def my_compiler(gl, example_inputs=None):
     print("my_compiler() called with FX graph:")
 
+    gl.print_tabular()
+
     # gl.graph.print_tabular()
     # return gl.forward
 

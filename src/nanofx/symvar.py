@@ -44,7 +44,9 @@ class SymVar:
 
         if var.__module__.startswith("paddle"):
             # TODO: support multiple ouputs and containers
-            return SymVar(vtype=args[0].vtype)
+            ot = args[0].vtype
+            graph.call_function(var, args, kwargs, ot)
+            return SymVar(vtype=ot)
         elif inspect.isbuiltin(var):
             if var is print:
                 raise NotImplementedError("print() is not supported")
@@ -53,6 +55,10 @@ class SymVar:
                 attr = getattr(object.var, name.var)
                 return SymVar(var=attr)
             elif var in [operator.add, operator.sub]:
+                ot = args[0].vtype
+                graph.call_function(var, args, kwargs, ot)
+                return SymVar(vtype=ot)
+            elif var in [operator.gt]:
                 ot = args[0].vtype
                 graph.call_function(var, args, kwargs, ot)
                 return SymVar(vtype=ot)

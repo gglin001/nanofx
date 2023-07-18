@@ -357,9 +357,22 @@ class PyEvalBase:
             SymVar(var=fn), [owner, SymVar(var=inst.argval)], {}, count_call=False
         )
 
-    # TODO:
     def COMPARE_OP(self, inst: Instruction):
-        pass
+        comparison_ops = {
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+            "is": operator.is_,
+            "is not": operator.is_not,
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
+        if inst.argval not in comparison_ops:
+            raise NotImplementedError(f"{inst.opname} {inst.argval}")
+        op = comparison_ops[inst.argval]
+        left, right = self.popn(2)
+        self.call_function(SymVar(var=op), [left, right], {})
 
     # def IMPORT_NAME(self, inst: Instruction):
     # def IMPORT_FROM(self, inst: Instruction):
