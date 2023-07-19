@@ -6,6 +6,7 @@ import operator
 
 from typing import TYPE_CHECKING, Any, Callable
 
+from .paddle_utils import Sequential
 from .source import Source
 
 _sym_var_id_counter = itertools.count()
@@ -44,9 +45,18 @@ class SymVar:
 
         if var.__module__.startswith("paddle"):
             # TODO: support multiple ouputs and containers
-            ot = args[0].vtype
-            graph.call_function(var, args, kwargs, ot)
-            return SymVar(vtype=ot)
+            # Sequential
+            if isinstance(var, Sequential):
+                for layer in var:
+                    tx.call_function(SymVar(var=layer), args=args, kwargs=kwargs)
+            elif var.__module__.startswith('paddle.vision.models.resnet'):
+                raise NotImplementedError("resnet is not supported")
+                # do inline call
+                # return tx.inline_call_function(SymVar(var=var.forward), args, kwargs)
+            else:
+                ot = args[0].vtype
+                graph.call_function(var, args, kwargs, ot)
+                return SymVar(vtype=ot)
         elif inspect.isbuiltin(var):
             if var is print:
                 raise NotImplementedError("print() is not supported")
