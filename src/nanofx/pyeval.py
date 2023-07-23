@@ -286,7 +286,15 @@ class PyEvalBase:
     # def BEFORE_ASYNC_WITH(self, inst: Instruction):
     # def BEGIN_FINALLY(self, inst: Instruction):
     # def END_ASYNC_FOR(self, inst: Instruction):
-    # def INPLACE_ADD(self, inst: Instruction):
+
+    def INPLACE_ADD(self, inst: Instruction):
+        fn = operator.iadd
+
+        nargs = len(inspect.signature(fn).parameters)
+        args = self.popn(nargs)
+        assert type(args[0]) == type(args[1])
+        self.call_function(SymVar(var=fn), args, {})
+
     # def INPLACE_SUBTRACT(self, inst: Instruction):
     # def INPLACE_MULTIPLY(self, inst: Instruction):
 

@@ -4,12 +4,16 @@ import types
 
 import paddle
 import paddle.fluid
+import paddle.nn
 
 Tensor = paddle.Tensor
 TensorType = type(paddle.Tensor())
 
 Sequential = paddle.fluid.dygraph.container.Sequential
 SequentialType = type(paddle.fluid.dygraph.container.Sequential())
+
+Layer = paddle.nn.Layer
+LayerType = type(paddle.nn.Layer())
 
 
 def skip_paddle_frame(frame: types.FrameType) -> bool:

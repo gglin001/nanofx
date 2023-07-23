@@ -6,7 +6,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from .bytecode_transformation import *  # noqa
-from .paddle_utils import TensorType
+from .paddle_utils import SequentialType, TensorType
 from .source import LocalSource
 
 if TYPE_CHECKING:
@@ -161,6 +161,10 @@ class PyCodegen:
         elif value.vtype == tuple:
             self.call(value.var)
             output.append(create_instruction("BUILD_TUPLE", arg=len(value.var)))
+        elif value.vtype == SequentialType:
+            # TODO:
+            # output.append(self.create_load(self.graph_output_var))
+            output.append(self.create_load_const(value.var))
         else:
             raise ValueError(f"unsupported type: {value.vtype}")
 

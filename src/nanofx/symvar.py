@@ -6,7 +6,7 @@ import operator
 
 from typing import TYPE_CHECKING, Any, Callable
 
-from .paddle_utils import Sequential
+from .paddle_utils import Layer, Sequential
 from .source import Source
 
 _sym_var_id_counter = itertools.count()
@@ -64,15 +64,17 @@ class SymVar:
                 object, name = args
                 attr = getattr(object.var, name.var)
                 return SymVar(var=attr)
-            elif var in [operator.add, operator.sub]:
+            elif var in [operator.add, operator.sub, operator.iadd]:
                 ot = args[0].vtype
                 graph.call_function(var, args, kwargs, ot)
                 return SymVar(vtype=ot)
-            elif var in [operator.gt]:
+            elif var in [operator.gt, operator.is_not]:
                 ot = args[0].vtype
                 graph.call_function(var, args, kwargs, ot)
                 return SymVar(vtype=ot)
             else:
                 raise NotImplementedError(f"builtin {var} is not supported")
 
+        if isinstance(var, Layer):
+            return tx.inline_call_function(SymVar(var=var.forward), args, kwargs)
         return tx.inline_call_function(self, args, kwargs)
