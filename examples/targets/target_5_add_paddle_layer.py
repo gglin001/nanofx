@@ -33,6 +33,15 @@ def my_compiler(gl, example_inputs=None):
     return dummy_print
 
 
+class M0(paddle.nn.Layer):
+    def forward(self, input):
+        out = paddle.add(input, input)
+        return out
+
+
+m0 = M0()
+
+
 class MyLayer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -42,6 +51,7 @@ class MyLayer(paddle.nn.Layer):
     def forward(self, input):
         temp = self._linear(input)
         temp = self._dropout(temp)
+        temp = m0(temp)
         return temp
 
 
