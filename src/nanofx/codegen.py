@@ -162,7 +162,7 @@ class PyCodegen:
             self.call(value.var)
             output.append(create_instruction("BUILD_TUPLE", arg=len(value.var)))
         elif value.vtype == SequentialType:
-            # TODO:
+            # TODO: support SequentialType
             # output.append(self.create_load(self.graph_output_var))
             output.append(self.create_load_const(value.var))
         else:

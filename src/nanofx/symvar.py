@@ -43,7 +43,11 @@ class SymVar:
         var = self.var
         graph = tx.output.graph
 
-        if var.__module__.startswith("paddle"):
+        if hasattr(var, '__qualname__') and var.__qualname__ == 'OrderedDict.values':
+            values = var()
+            return SymVar(var=values)
+
+        if var.__module__ is not None and var.__module__.startswith("paddle"):
             # TODO: support multiple ouputs and containers
             # Sequential
             if isinstance(var, Sequential):
@@ -64,6 +68,10 @@ class SymVar:
                 object, name = args
                 attr = getattr(object.var, name.var)
                 return SymVar(var=attr)
+            elif var is iter:
+                target = args[0]
+                var = iter(target.var)
+                return SymVar(var=var)
             elif var in [operator.add, operator.sub, operator.iadd]:
                 ot = args[0].vtype
                 graph.call_function(var, args, kwargs, ot)

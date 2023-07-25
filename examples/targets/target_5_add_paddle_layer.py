@@ -26,7 +26,7 @@ def my_compiler(gl, example_inputs=None):
     # return gl.forward
 
     # dummy_print
-    def dummy_print(*args, **kwargs):
+    def dummy_print(self, *args, **kwargs):
         print("==== dummy_print: ")
         return (args[0],)
 

@@ -235,6 +235,12 @@ class PyEvalBase:
             [(k, v) for k, v in self.symbolic_locals.items() if k in reads]
         )
 
+    def jump(self, inst: Instruction):
+        for i, ins in enumerate(self.instructions):
+            if inst.target.offset == ins.offset:
+                self.instruction_pointer = i
+                return
+
     def POP_TOP(self, inst: Instruction):
         self.pop()
 
@@ -307,7 +313,13 @@ class PyEvalBase:
     # def BINARY_XOR(self, inst: Instruction):
     # def BINARY_OR(self, inst: Instruction):
     # def INPLACE_POWER(self, inst: Instruction):
-    # def GET_ITER(self, inst: Instruction):
+
+    def GET_ITER(self, inst: Instruction):
+        fn = iter
+
+        var = self.pop()
+        self.call_function(SymVar(var=fn), [var, SymVar(var=inst.argval)], {})
+
     # def GET_YIELD_FROM_ITER(self, inst: Instruction):
 
     # def PRINT_EXPR(self, inst: Instruction):
@@ -338,7 +350,16 @@ class PyEvalBase:
     # def STORE_NAME(self, inst: Instruction):
     # def DELETE_NAME(self, inst: Instruction):
     # def UNPACK_SEQUENCE(self, inst: Instruction):
-    # def FOR_ITER(self, inst: Instruction):
+
+    def FOR_ITER(self, inst: Instruction):
+        it = self.pop()
+        try:
+            var = next(it.var)
+            self.push(SymVar(var=it.var))
+            self.push(SymVar(var=var))
+        except StopIteration:
+            self.jump(inst)
+
     # def UNPACK_EX(self, inst: Instruction):
     # def STORE_ATTR(self, inst: Instruction):
     # def DELETE_ATTR(self, inst: Instruction):
@@ -390,11 +411,7 @@ class PyEvalBase:
     # def JUMP_IF_TRUE_OR_POP(self, inst: Instruction):
 
     def JUMP_ABSOLUTE(self, inst: Instruction):
-        for i, ins in enumerate(self.instructions):
-            if inst.target.offset == ins.offset:
-                self.instruction_pointer = i
-                return
-        raise Exception("JUMP_ABSOLUTE error")
+        self.jump(inst)
 
     def POP_JUMP_IF_FALSE(self, inst: Instruction):
         value = self.pop()

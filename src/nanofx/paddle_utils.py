@@ -34,7 +34,9 @@ def skip_paddle_frame(frame: types.FrameType) -> bool:
 
 def skip_paddle_filename(filename: str) -> bool:
     # TODO: use regex
-    if '/paddle/fluid/' in filename:
+    if 'paddle/fluid/dygraph/container.py' in filename:
+        return False
+    elif '/paddle/fluid/' in filename:
         return True
     elif '/paddle/nn/' in filename:
         return True
